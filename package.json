@@ -1,0 +1,38 @@
+{
+  "name": "seisplotjs-miniseed",
+  "version": "0.0.1",
+  "description": "Plotting seismic data in miniseed format using d3.",
+  "main": "./lib/waveformplot.js",
+  "browser": "./lib/waveformplot.js",
+  "dependencies": {
+    "d3": "^4.2.5",
+    "seisplotjs-miniseed": ">= 0.0.1",
+    "seisplotjs-seedcodec": ">= 0.0.1"
+  },
+  "scripts": {
+    "test": "qunit -c ./lib/miniseed.js -t ./test/index.js",
+    "compile": "babel --presets es2015 -d lib/ src/",
+    "prepublish": "npm run compile"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/crotwell/seisplotjs-waveformplot.git"
+  },
+  "keywords": [
+    "seismology",
+    "miniseed",
+    "steim1",
+    "steim2"
+  ],
+  "author": "Philip Crotwell <crotwell@seis.sc.edu>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/crotwell/seisplotjs-waveformplot/issues"
+  },
+  "homepage": "https://github.com/crotwell/seisplotjs-waveformplot",
+  "devDependencies": {
+    "babel-cli": "^6.14.0",
+    "babel-preset-es2015": "^6.14.0",
+    "qunit": "^0.9.1"
+  }
+}
