@@ -3,7 +3,6 @@
   "version": "0.0.1",
   "description": "Plotting seismic data in miniseed format using d3.",
   "main": "./lib/waveformplot.js",
-  "browser": "./lib/waveformplot.js",
   "dependencies": {
     "d3": "^4.2.5",
     "seisplotjs-miniseed": ">= 0.0.1",
