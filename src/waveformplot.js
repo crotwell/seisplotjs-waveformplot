@@ -21,12 +21,8 @@ import * as miniseed from 'seisplotjs-miniseed';
     }
     
  
-console.log("before chart constructor: miniseed version: "+miniseed.version);
-console.log("before chart constructor: d3 version: "+d3.version);
 export class chart {
     constructor(inSvgParent, inSegments) {
-console.log("in chart constructor: d3 version: "+d3.version);
-console.log("in chart constructor: "+inSvgParent+" "+inSegments.slice(0,1));
         this.throttleResize = true;
         this.plotStart;
         this.plotEnd;
@@ -67,19 +63,22 @@ console.log("in chart constructor: "+inSvgParent+" "+inSegments.slice(0,1));
                 this.plotEnd = this.segments[0][0].end;
             }
         } else {
-console.log("WARNING segments is length 0");
+            console.log("WARNING segments is length 0");
         }
       //  fix this....
       //  addResizeHandler(resize);
     }
 
     enableZoom() {
+console.log("does not work yet");
+      let zoomed = function() {
+        svgG.attr("transform", d3.event.transform);
+        svgG.select('.x.axis').call(xAxis.scale(d3.event.transform.rescaleX(x)));
+        //gY.call(yAxis.scale(d3.event.transform.rescaleY(y)));
+      }
         let myThis = this;
-        let zoom = d3.behavior.zoom()
-                        .x(myThis.xScale)
-                        .on('zoom', function() {
-                            myThis.resize.call(myThis);
-                        });
+        let zoom = d3.zoom()
+                        .on('zoom', zoomed);
         myThis.svgParent.call(zoom);
     }
     enableDrag() {
@@ -94,12 +93,12 @@ console.log("WARNING segments is length 0");
         let svgP = this.svgParent;
         let svg = svgP.select("svg");
         let svgG = svg.select("g");
-console.log("clickpane disabled");
-//        let clickPane = svgG.select("rect.graphClickPane");
- //       clickPane.call(drag);
+        let clickPane = svgG.select("rect.graphClickPane");
+        clickPane.call(drag);
     }
     
     append(key, segment) {
+console.log("append doesnot work...");
         this.segments.push(segment);
     }
     
@@ -134,7 +133,7 @@ console.log("clickpane disabled");
 
         /* Update the range of the scale with new width/height */
         this.xScale.range([0, this.width]);
-        this.yScale.range([this.height/this.segments.length, 0]);
+        this.yScale.range([this.height, 0]);
         
         /* Update the axis with the new scale */
         svgG.select('.x.axis')
@@ -156,10 +155,9 @@ console.log("clickpane disabled");
               .attr("width", this.width)
               .attr("height", this.height);
         
-console.log("clickpane disabled");
-//        svgG.select("rect.graphClickPane")
- //             .attr("width", this.width)
-  //            .attr("height", this.height);
+        svgG.select("rect.graphClickPane")
+              .attr("width", this.width)
+              .attr("height", this.height);
         
         /* Force D3 to recalculate and update the line segments*/
         for (let plotNum=0; plotNum < this.segments.length; plotNum++) {
@@ -253,7 +251,7 @@ console.log("clickpane disabled");
             .range([ 0, this.width ])
             .nice();
         this.yScale = d3.scaleLinear().domain([ minAmp, maxAmp ])
-            .range([ this.height/this.segments.length, 0 ])
+            .range([ this.height, 0 ])
             .nice();
         this.xAxis = d3.axisBottom().scale(this.xScale).ticks(5);
 
@@ -275,7 +273,7 @@ console.log("clickpane disabled");
             .enter().append("path")
             .classed("seispath", true)
             .style("fill", "none")
-            .style("stroke", "red")
+            .style("stroke", "black")
             .style("stroke-width", "1px")
             .attr("id", function(d) { return d.seisId()+'_'+insidePlotUUID})
             .attr("d", function(d) {return insideCreateLineFunction(d, xScale, yScale)});
@@ -306,10 +304,10 @@ console.log("clickpane disabled");
             .attr("transform-origin", "center center")
             .attr("transform", "rotate(-90)")
             .text(this.yLabel);
-console.log("clickpane disabled");
-//        svgG.append("rect").classed("graphClickPane", true)
- //           .attr("width", this.width)
-  //          .attr("height", this.height);
+        svgG.append("rect").classed("graphClickPane", true)
+            .attr("fill", "none")
+            .attr("width", this.width)
+            .attr("height", this.height);
         this.resize();
     }
     
