@@ -6,7 +6,7 @@
   "dependencies": {
     "d3": "^4.2.5",
     "seisplotjs-miniseed": ">= 0.0.1",
-    "seisplotjs-seedcodec": ">= 0.0.1"
+    "seisplotjs-seedcodec": ">= 1.0.1"
   },
   "scripts": {
     "test": "qunit -c ./lib/miniseed.js -t ./test/index.js",
