@@ -19,6 +19,45 @@ import * as miniseed from 'seisplotjs-miniseed';
           return s4() + s4() + '-' + s4() + '-' + s4() + '-' +
                  s4() + '-' + s4() + s4() + s4();
     }
+
+export function loadParseSplit(net, sta, loc, chan, beginDate, endDate, callback) {
+          var isoStart = start.toISOString();
+        isoStart = isoStart.substring(0, isoStart.lastIndexOf('.'));
+        var isoEnd = end.toISOString();
+        isoEnd = isoEnd.substring(0, isoEnd.lastIndexOf('.'));
+        var url = url="http://"+host+"/fdsnws/dataselect/1/query?net="+escape(net)+"&sta="+escape(sta)+"&loc="+escape(loc)+"&cha="+escape(cha)+"&start="+isoStart+"&end="+isoEnd;
+        console.log("url: "+url);
+        loadParseSplitUrl(url, callback);
+}
+
+export function loadParseSplitUrl(url, callback) {
+        d3.request(url)
+        .responseType("arraybuffer")
+        .get(null,
+            function(error, data) {
+                if (error) {
+                    console.log(error);
+                } else {
+                    console.log("data length: "+data.response.byteLength);
+
+                    var svgParent = oSvgParent;
+
+                    var dataRecords = miniseed.parseDataRecords(data.response);
+                    console.log("found " + dataRecords.length + " data records");
+                    var byChannel = miniseed.byChannel(dataRecords);
+                    var keys = Object.keys(byChannel);
+                    segments = [];
+                    console.log("byChannel keys:"+Object.keys(byChannel));
+                    for(var i=0; i<keys.length; i++) {
+                       var key = keys[i];
+                       segments[i] = miniseed.merge(byChannel[key])
+                    }
+                    callback(segments);
+                }
+           }
+       );
+}
+
     
  
 export class chart {
@@ -70,18 +109,19 @@ export class chart {
     }
 
     enableZoom() {
-console.log("does not work yet");
+console.log("enableZoom does not work yet");
       let zoomed = function() {
-        svgG.attr("transform", d3.event.transform);
-        svgG.select('.x.axis').call(xAxis.scale(d3.event.transform.rescaleX(x)));
+console.log("zooming, or we should be at least...");
+        this.svgParent.select('svg').attr("transform", d3.event.transform);
+        this.svgParent.select('.x.axis').call(this.xAxis.scale(d3.event.transform.rescaleX(xScale)));
         //gY.call(yAxis.scale(d3.event.transform.rescaleY(y)));
       }
-        let myThis = this;
         let zoom = d3.zoom()
                         .on('zoom', zoomed);
-        myThis.svgParent.call(zoom);
+        this.svgParent.select('svg').call(zoom);
     }
     enableDrag() {
+console.log("enableDrag does not work yet");
         let myThis = this;
         let drag = d3.behavior.drag()
                             .origin(function() {
@@ -238,12 +278,12 @@ console.log("append doesnot work...");
         let svg = this.svgParent.append("svg");
         this.setWidthHeight(svg, this.outerWidth, this.outerHeight);
 
-        let svgG = svg
+        this.svgG = svg
             .append("g")
             .attr("transform", "translate(" + this.margin.left + "," + this.margin.top + ")");
         
 
-        svgG.append("defs").append("clipPath").attr("id", this.clipPathId)
+        this.svgG.append("defs").append("clipPath").attr("id", this.clipPathId)
             .append("rect")
               .attr("width", this.width)
               .attr("height", this.height);
@@ -257,11 +297,11 @@ console.log("append doesnot work...");
 
         this.yAxis = d3.axisLeft().scale(this.yScale).ticks(5);
         
-        svgG.append("g").classed("x axis", true)
+        this.svgG.append("g").classed("x axis", true)
             .attr("transform",  "translate(0," + (this.height ) + " )")
             .call(this.xAxis);
-        svgG.append("g").classed("y axis", true).call(this.yAxis);
-        let dataSvgG = svgG.append("g").classed("seisdata", true);
+        this.svgG.append("g").classed("y axis", true).call(this.yAxis);
+        let dataSvgG = this.svgG.append("g").classed("seisdata", true);
         
         
         let insidePlotUUID = this.plotUUID;
@@ -304,7 +344,7 @@ console.log("append doesnot work...");
             .attr("transform-origin", "center center")
             .attr("transform", "rotate(-90)")
             .text(this.yLabel);
-        svgG.append("rect").classed("graphClickPane", true)
+        this.svgG.append("rect").classed("graphClickPane", true)
             .attr("fill", "none")
             .attr("width", this.width)
             .attr("height", this.height);
