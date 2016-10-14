@@ -9,6 +9,7 @@
     "seisplotjs-seedcodec": ">= 1.0.1"
   },
   "scripts": {
+    "lint": "eslint 'src/*.js'",
     "test": "qunit -c ./lib/miniseed.js -t ./test/index.js",
     "compile": "babel --presets es2015 -d lib/ src/",
     "prepublish": "npm run compile"
@@ -32,6 +33,10 @@
   "devDependencies": {
     "babel-cli": "^6.14.0",
     "babel-preset-es2015": "^6.14.0",
+    "eslint": "^3.7.1",
+    "eslint-config-standard": "^6.2.0",
+    "eslint-plugin-promise": "^3.0.0",
+    "eslint-plugin-standard": "^2.0.1",
     "qunit": "^0.9.1"
   }
 }
