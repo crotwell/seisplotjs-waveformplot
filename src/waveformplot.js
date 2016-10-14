@@ -14,18 +14,18 @@ var s4 = function() {
   return Math.floor((1 + Math.random()) * 0x10000)
                  .toString(16)
                  .substring(1);
-}
+};
 var guid = function() {
   return s4() + s4() + '-' + s4() + '-' + s4() + '-' +
          s4() + '-' + s4() + s4() + s4();
-}
+};
 
-export function loadParseSplit(net, sta, loc, chan, beginDate, endDate, callback) {
-  var isoStart = start.toISOString();
+export function loadParseSplit(host, net, sta, loc, chan, startDate, endDate, callback) {
+  var isoStart = startDate.toISOString();
   isoStart = isoStart.substring(0, isoStart.lastIndexOf('.'));
-  var isoEnd = end.toISOString();
+  var isoEnd = endDate.toISOString();
   isoEnd = isoEnd.substring(0, isoEnd.lastIndexOf('.'));
-  var url = url="http://"+host+"/fdsnws/dataselect/1/query?net="+escape(net)+"&sta="+escape(sta)+"&loc="+escape(loc)+"&cha="+escape(cha)+"&start="+isoStart+"&end="+isoEnd;
+  var url = url="http://"+host+"/fdsnws/dataselect/1/query?net="+escape(net)+"&sta="+escape(sta)+"&loc="+escape(loc)+"&cha="+escape(chan)+"&start="+isoStart+"&end="+isoEnd;
   console.log("url: "+url);
   loadParseSplitUrl(url, callback);
 }
@@ -40,17 +40,15 @@ export function loadParseSplitUrl(url, callback) {
           } else {
             console.log("data length: "+data.response.byteLength);
 
-            var svgParent = oSvgParent;
-
             var dataRecords = miniseed.parseDataRecords(data.response);
             console.log("found " + dataRecords.length + " data records");
             var byChannel = miniseed.byChannel(dataRecords);
             var keys = Object.keys(byChannel);
-            segments = [];
+            var segments = [];
             console.log("byChannel keys:"+Object.keys(byChannel));
             for(var i=0; i<keys.length; i++) {
               var key = keys[i];
-              segments[i] = miniseed.merge(byChannel[key])
+              segments[i] = miniseed.merge(byChannel[key]);
             }
             callback(segments);
           }
@@ -110,9 +108,9 @@ export class chart {
     let zoomed = function() {
       console.log("zooming, or we should be at least...");
       this.svgParent.select('svg').attr("transform", d3.event.transform);
-      this.svgParent.select('.x.axis').call(this.xAxis.scale(d3.event.transform.rescaleX(xScale)));
+      this.svgParent.select('.x.axis').call(this.xAxis.scale(d3.event.transform.rescaleX(this.xScale)));
       //gY.call(yAxis.scale(d3.event.transform.rescaleY(y)));
-    }
+    };
     let zoom = d3.zoom().on('zoom', zoomed);
     this.svgParent.select('svg').call(zoom);
   }
@@ -152,7 +150,7 @@ export class chart {
     this.setPlotStart(zStart);
     this.setPlotEnd(zEnd);
 
-  };
+  }
 
   resize() {
     /*
@@ -221,22 +219,19 @@ export class chart {
     return d3.line()
       .x(function(d, i) {
         return xScale(seg.timeOfSample(i));
-      }).y(function(d, i) {
+      }).y(function(d) {
         return yScale(d);
       }).curve(d3.curveLinear)(seg); // call the d3 function created by line with data
        // }).interpolate("linear")(seg); // call the d3 function created by line with data
   }
     
   draw() {
-    let sampPeriod = 1;
     let minAmp = 2 << 24;
     let maxAmp = -1 * (minAmp);
-    let count = 0;
     let s;
     let e;
     let record;
     let n;
-    let connectingDR;
     if (this.segments.length > 0) {
       if(!this.plotStart) {
         this.plotStart = this.segments[0][0].start;
@@ -305,14 +300,14 @@ export class chart {
     let xScale = this.xScale;
     let yScale = this.yScale;
     let seisG = dataSvgG.selectAll("g").data(this.segments).enter().append("g").attr("id", function(d) {return d[0].seisId();});
-    let seisPath = seisG.selectAll("path").data(function(d) {return d;})
+    seisG.selectAll("path").data(function(d) {return d;})
         .enter().append("path")
         .classed("seispath", true)
         .style("fill", "none")
         .style("stroke", "black")
         .style("stroke-width", "1px")
-        .attr("id", function(d) { return d.seisId()+'_'+insidePlotUUID})
-        .attr("d", function(d) {return insideCreateLineFunction(d, xScale, yScale)});
+        .attr("id", function(d) { return d.seisId()+'_'+insidePlotUUID;})
+        .attr("d", function(d) {return insideCreateLineFunction(d, xScale, yScale);});
         
     /*
     let seismogram = svgG.append("g").attr("class", "seismogram").attr("clip-path", "url(#"+clipPathId+")");
@@ -374,13 +369,13 @@ export class chart {
 
   setPlotStart(value) {
     this.plotStart = value;
-    this.xScale.domain([ this.plotStart, this.plotEnd ])
+    this.xScale.domain([ this.plotStart, this.plotEnd ]);
     this.resizeNeeded();
     return this;
   }
   setPlotEnd(value) {
     this.plotEnd = value;
-    this.xScale.domain([ this.plotStart, this.plotEnd ])
+    this.xScale.domain([ this.plotStart, this.plotEnd ]);
     this.resizeNeeded();
     return this;
   }
