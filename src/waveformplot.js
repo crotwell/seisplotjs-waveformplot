@@ -8,6 +8,57 @@
 import * as d3 from 'd3';
 import * as miniseed from 'seisplotjs-miniseed';
 
+/** create seismogram plots by selecting elements using the supplied
+  * css selector. Each element is expected to have attributes defined
+  * for net, sta, loc, chan and two of start, end and duration.
+  * Optionally, end will default to NOW if neither start or end are
+  * given, so only giving duration shows the most recent duration seconds
+  * from current time. Optionally, host may be given to choose an Fdsn
+  * FDSN dataselect web service for data retrieval, which defaults to
+  * service.iris.edu.
+  *
+  * Note that css style for the selector should set both stoke to a color
+  * and fill to none in order for the seismogram to display. 
+  * This can be done by: <br>
+  * yourselector {
+  *   stroke: skyblue;
+  *   fill: none;
+  * }<br/>
+  */
+export function createPlotsBySelector(selector) {
+  d3.selectAll(selector).each(function(d) {
+    let svgParent = d3.select(this);
+    let net = svgParent.attr("net");
+    let sta = svgParent.attr("sta");
+    let loc = svgParent.attr("loc");
+    let chan = svgParent.attr("chan");
+    let start = svgParent.attr("start");
+    let end = svgParent.attr("end");
+    let duration = svgParent.attr("duration");
+    let host = svgParent.attr("host");
+    if (! host) {
+        host = "service.iris.edu";
+    }
+
+    let seisDates = calcStartEndDates(start, end, duration);
+    let startDate = seisDates.startDate;
+    let endDate = seisDates.endDate;
+
+    let url = formRequestUrl(host, net, sta, loc, chan, startDate, endDate);
+    console.log("url: "+url);
+    loadParseSplitUrl(url,
+        function(error, segments) {
+            if (error) {
+                console.log("error loading data: "+error);
+            } else {
+                let seismogram = new chart(svgParent, segments);
+                seismogram.draw();
+                //seismogram.enableDrag();
+                // seismogram.enableZoom();
+            }
+        });
+  });
+}
 
 export function calcStartEndDates(start, end, duration) {
   let startDate;
@@ -31,11 +82,11 @@ export function calcStartEndDates(start, end, duration) {
 }
 
 export function formRequestUrl(host, net, sta, loc, chan, startDate, endDate) {
-  var isoStart = startDate.toISOString();
+  let isoStart = startDate.toISOString();
   isoStart = isoStart.substring(0, isoStart.lastIndexOf('.'));
-  var isoEnd = endDate.toISOString();
+  let isoEnd = endDate.toISOString();
   isoEnd = isoEnd.substring(0, isoEnd.lastIndexOf('.'));
-  var url = url="http://"+host+"/fdsnws/dataselect/1/query?net="+escape(net)+"&sta="+escape(sta)+"&loc="+escape(loc)+"&cha="+escape(chan)+"&start="+isoStart+"&end="+isoEnd;
+  let url = url="http://"+host+"/fdsnws/dataselect/1/query?net="+escape(net)+"&sta="+escape(sta)+"&loc="+escape(loc)+"&cha="+escape(chan)+"&start="+isoStart+"&end="+isoEnd;
   return url;
 }
 
@@ -50,14 +101,15 @@ export function loadParseSplitUrl(url, callback) {
     .get(null,
         function(error, data) {
           if (error) {
+console.log("d3 get error: "+error);
             callback(error, null);
           } else {
-            var dataRecords = miniseed.parseDataRecords(data.response);
-            var byChannel = miniseed.byChannel(dataRecords);
-            var keys = Object.keys(byChannel);
-            var segments = [];
-            for(var i=0; i<keys.length; i++) {
-              var key = keys[i];
+            let dataRecords = miniseed.parseDataRecords(data.response);
+            let byChannel = miniseed.byChannel(dataRecords);
+            let keys = Object.keys(byChannel);
+            let segments = [];
+            for(let i=0; i<keys.length; i++) {
+              let key = keys[i];
               segments[i] = miniseed.merge(byChannel[key]);
             }
             callback(null, segments);
@@ -65,6 +117,14 @@ export function loadParseSplitUrl(url, callback) {
         });
 }
  
+/** A seismogram plot, using d3. Note that you must have
+  * stroke and fill set in css like:<br>
+  * path.seispath {
+  *   stroke: skyblue;
+  *   fill: none;
+  * }<br/>
+  * in order to have the seismogram display. 
+  */
 export class chart {
   constructor(inSvgParent, inSegments) {
     this.throttleResize = true;
@@ -236,6 +296,7 @@ export class chart {
   }
     
   draw() {
+console.log("in draw");
     let minAmp = 2 << 24;
     let maxAmp = -1 * (minAmp);
     let s;
@@ -313,9 +374,9 @@ export class chart {
     seisG.selectAll("path").data(function(d) {return d;})
         .enter().append("path")
         .classed("seispath", true)
-        .style("fill", "none")
-        .style("stroke", "black")
-        .style("stroke-width", "1px")
+//        .style("fill", "none")
+//        .style("stroke", "black")
+//        .style("stroke-width", "1px")
         .attr("id", function(d) { return d.seisId()+'_'+insidePlotUUID;})
         .attr("d", function(d) {return insideCreateLineFunction(d, xScale, yScale);});
         
@@ -440,12 +501,12 @@ export class chart {
 /*
  * from http://stackoverflow.com/questions/105034/how-to-create-a-guid-uuid-in-javascript
  */
-var s4 = function() {
+let s4 = function() {
   return Math.floor((1 + Math.random()) * 0x10000)
                  .toString(16)
                  .substring(1);
 };
-var guid = function() {
+let guid = function() {
   return s4() + s4() + '-' + s4() + '-' + s4() + '-' +
          s4() + '-' + s4() + s4() + s4();
 };
