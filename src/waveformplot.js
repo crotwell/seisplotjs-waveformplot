@@ -8,18 +8,6 @@
 import * as d3 from 'd3';
 import * as miniseed from 'seisplotjs-miniseed';
 
-/*
- * from http://stackoverflow.com/questions/105034/how-to-create-a-guid-uuid-in-javascript
- */
-var s4 = function() {
-  return Math.floor((1 + Math.random()) * 0x10000)
-                 .toString(16)
-                 .substring(1);
-};
-var guid = function() {
-  return s4() + s4() + '-' + s4() + '-' + s4() + '-' +
-         s4() + '-' + s4() + s4() + s4();
-};
 
 export function calcStartEndDates(start, end, duration) {
   let startDate;
@@ -449,3 +437,15 @@ export class chart {
 }
 
 
+/*
+ * from http://stackoverflow.com/questions/105034/how-to-create-a-guid-uuid-in-javascript
+ */
+var s4 = function() {
+  return Math.floor((1 + Math.random()) * 0x10000)
+                 .toString(16)
+                 .substring(1);
+};
+var guid = function() {
+  return s4() + s4() + '-' + s4() + '-' + s4() + '-' +
+         s4() + '-' + s4() + s4() + s4();
+};
