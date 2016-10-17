@@ -45,7 +45,6 @@ export function createPlotsBySelector(selector) {
     let endDate = seisDates.endDate;
 
     let url = formRequestUrl(host, net, sta, loc, chan, startDate, endDate);
-    console.log("url: "+url);
     loadParseSplitUrl(url,
         function(error, segments) {
             if (error) {
@@ -102,7 +101,6 @@ export function loadParseSplitUrl(url, callback) {
     .get(null,
         function(error, data) {
           if (error) {
-console.log("d3 get error: "+error);
             callback(error, null);
           } else {
             let dataRecords = miniseed.parseDataRecords(data.response);
@@ -297,7 +295,6 @@ export class chart {
   }
     
   draw() {
-console.log("in draw");
     let minAmp = 2 << 24;
     let maxAmp = -1 * (minAmp);
     let s;
