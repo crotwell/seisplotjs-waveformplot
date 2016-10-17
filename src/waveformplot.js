@@ -1,3 +1,4 @@
+/*global window*/
 /**
  * Philip Crotwell
  * University of South Carolina, 2014
@@ -20,13 +21,38 @@ var guid = function() {
          s4() + '-' + s4() + s4() + s4();
 };
 
-export function loadParseSplit(host, net, sta, loc, chan, startDate, endDate, callback) {
+export function calcStartEndDates(start, end, duration) {
+  let startDate;
+  let endDate;
+  if (start && end) {
+    startDate = new Date(start);
+    endDate = new Date(end);
+  } else if (start && duration) {
+    startDate = new Date(start);
+    endDate = new Date(startDate.getTime()+parseFloat(duration)*1000);
+  } else if (end && duration) {
+    endDate = new Date(end);
+    startDate = new Date(endDate.getTime()-parseFloat(duration)*1000);
+  } else if (duration) {
+    endDate = new Date();
+    startDate = new Date(endDate.getTime()-parseFloat(duration)*1000);
+  } else {
+    throw "need some combination of start, end and duration";
+  }
+  return { "startDate": startDate, "endDate": endDate };
+}
+
+export function formRequestUrl(host, net, sta, loc, chan, startDate, endDate) {
   var isoStart = startDate.toISOString();
   isoStart = isoStart.substring(0, isoStart.lastIndexOf('.'));
   var isoEnd = endDate.toISOString();
   isoEnd = isoEnd.substring(0, isoEnd.lastIndexOf('.'));
   var url = url="http://"+host+"/fdsnws/dataselect/1/query?net="+escape(net)+"&sta="+escape(sta)+"&loc="+escape(loc)+"&cha="+escape(chan)+"&start="+isoStart+"&end="+isoEnd;
-  console.log("url: "+url);
+  return url;
+}
+
+export function loadParseSplit(host, net, sta, loc, chan, startDate, endDate, callback) {
+  let url = formRequestUrl(host, net, sta, loc, chan, startDate, endDate);
   loadParseSplitUrl(url, callback);
 }
 
@@ -36,21 +62,17 @@ export function loadParseSplitUrl(url, callback) {
     .get(null,
         function(error, data) {
           if (error) {
-            console.log(error);
+            callback(error, null);
           } else {
-            console.log("data length: "+data.response.byteLength);
-
             var dataRecords = miniseed.parseDataRecords(data.response);
-            console.log("found " + dataRecords.length + " data records");
             var byChannel = miniseed.byChannel(dataRecords);
             var keys = Object.keys(byChannel);
             var segments = [];
-            console.log("byChannel keys:"+Object.keys(byChannel));
             for(var i=0; i<keys.length; i++) {
               var key = keys[i];
               segments[i] = miniseed.merge(byChannel[key]);
             }
-            callback(segments);
+            callback(null, segments);
           }
         });
 }
