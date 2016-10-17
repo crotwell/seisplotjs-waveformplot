@@ -97,6 +97,7 @@ export function loadParseSplit(host, net, sta, loc, chan, startDate, endDate, ca
 
 export function loadParseSplitUrl(url, callback) {
   d3.request(url)
+    .mimeType("application/vnd.fdsn.mseed")
     .responseType("arraybuffer")
     .get(null,
         function(error, data) {
