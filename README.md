@@ -55,7 +55,10 @@ which will combine the test.js javascript with the packages from npm into a sing
 
 Load the html page in your browser and you should end up with a seismogram plot.
 
-Please note, you need to be careful with the amount and frequency that you load data. In particular, asking for very long time intervals will take significant time to request and take a lot of memory. Secondly, it is considered rude to repeatedly reload the page to make the display act like a real time display. This will likely cause the [IRIS DMC](http://service.iris.edu/fdsnws/dataselect/docs/1/help/) to block your requests. See the sections "Considerations" and "Real time data" in the IRIS help page for more information.
+**Please note**, you need to be careful with the amount and frequency that you load data. In particular, asking for very long time intervals will take significant time to request and take a lot of memory. Secondly, it is considered rude to repeatedly reload the page to make the display act like a real time display. This will likely cause the [IRIS DMC](http://service.iris.edu/fdsnws/dataselect/docs/1/help/) to block your requests. See the sections 
+[Considerations](http://service.iris.edu/fdsnws/dataselect/docs/1/help/#considerations) 
+and [Usage guidelines](http://ds.iris.edu/ds/nodes/dmc/services/usage/)
+in the IRIS help pages for more information.
 
 
 
