@@ -1,6 +1,9 @@
 # seisplotjs-waveformplot
 Plotting seismic data in miniseed format using d3
 
+A [gist is here](https://gist.github.com/crotwell/27eadb025d22c21b9098f4aeb7d72316)
+that can be viewed at [bl.ocks.org](http://bl.ocks.org/crotwell/27eadb025d22c21b9098f4aeb7d72316)
+
 Example:
 
 First use npm to get the package, we also use browserify
