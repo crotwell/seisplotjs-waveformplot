@@ -1,11 +1,11 @@
 {
   "name": "seisplotjs-waveformplot",
-  "version": "1.0.1-snapshot",
+  "version": "1.0.1",
   "description": "Plotting seismic data in miniseed format using d3.",
   "main": "./lib/waveformplot.js",
   "dependencies": {
-    "d3": "^4.2.7",
-    "seisplotjs-miniseed": ">= 1.0.0"
+    "d3": "^4.3.0",
+    "seisplotjs-miniseed": ">= 1.0.1"
   },
   "scripts": {
     "lint": "eslint 'src/*.js'",
