@@ -8,6 +8,9 @@
 import * as d3 from 'd3';
 import * as miniseed from 'seisplotjs-miniseed';
 
+/* re-export */
+export { miniseed , d3 };
+
 /** create seismogram plots by selecting elements using the supplied
   * css selector. Each element is expected to have attributes defined
   * for net, sta, loc, chan and two of start, end and duration.
