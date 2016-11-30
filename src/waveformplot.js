@@ -39,15 +39,19 @@ export function createPlotsBySelector(selector) {
     let end = svgParent.attr("end");
     let duration = svgParent.attr("duration");
     let host = svgParent.attr("host");
+    let protocol = 'http:';
     if (! host) {
         host = "service.iris.edu";
+    }
+    if ("https:" == document.location.protocol) {
+      protocol = 'https:'
     }
 
     let seisDates = calcStartEndDates(start, end, duration);
     let startDate = seisDates.startDate;
     let endDate = seisDates.endDate;
 
-    let url = formRequestUrl(host, net, sta, loc, chan, startDate, endDate);
+    let url = formRequestUrl(protocol, host, net, sta, loc, chan, startDate, endDate);
     loadParseSplitUrl(url,
         function(error, segments) {
             if (error) {
@@ -83,17 +87,17 @@ export function calcStartEndDates(start, end, duration) {
   return { "startDate": startDate, "endDate": endDate };
 }
 
-export function formRequestUrl(host, net, sta, loc, chan, startDate, endDate) {
+export function formRequestUrl(protocol, host, net, sta, loc, chan, startDate, endDate) {
   let isoStart = startDate.toISOString();
   isoStart = isoStart.substring(0, isoStart.lastIndexOf('.'));
   let isoEnd = endDate.toISOString();
   isoEnd = isoEnd.substring(0, isoEnd.lastIndexOf('.'));
-  let url = url="http://"+host+"/fdsnws/dataselect/1/query?net="+escape(net)+"&sta="+escape(sta)+"&loc="+escape(loc)+"&cha="+escape(chan)+"&start="+isoStart+"&end="+isoEnd;
+  let url = url=protocol+"//"+host+"/fdsnws/dataselect/1/query?net="+escape(net)+"&sta="+escape(sta)+"&loc="+escape(loc)+"&cha="+escape(chan)+"&start="+isoStart+"&end="+isoEnd;
   return url;
 }
 
-export function loadParseSplit(host, net, sta, loc, chan, startDate, endDate, callback) {
-  let url = formRequestUrl(host, net, sta, loc, chan, startDate, endDate);
+export function loadParseSplit(protocol, host, net, sta, loc, chan, startDate, endDate, callback) {
+  let url = formRequestUrl(protocol, host, net, sta, loc, chan, startDate, endDate);
   loadParseSplitUrl(url, callback);
 }
 
