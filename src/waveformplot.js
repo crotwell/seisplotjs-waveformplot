@@ -101,7 +101,9 @@ export function loadParseSplit(protocol, host, net, sta, loc, chan, startDate, e
   loadParseSplitUrl(url, callback);
 }
 
-export function loadParseSplitUrl(url, callback) {
+
+/** loads and parses data into an array of miniseed records */
+export function loadParse(url, callback) {
   d3.request(url)
     .mimeType("application/vnd.fdsn.mseed")
     .responseType("arraybuffer")
@@ -111,16 +113,26 @@ export function loadParseSplitUrl(url, callback) {
             callback(error, null);
           } else {
             let dataRecords = miniseed.parseDataRecords(data.response);
-            let byChannel = miniseed.byChannel(dataRecords);
-            let keys = Object.keys(byChannel);
-            let segments = [];
-            for(let i=0; i<keys.length; i++) {
-              let key = keys[i];
-              segments[i] = miniseed.merge(byChannel[key]);
-            }
-            callback(null, segments);
+            callback(null, dataRecords);
           }
         });
+}
+
+export function loadParseSplitUrl(url, callback) {
+  loadParse(url, function(error, dataRecords) {
+      if (error) {
+        callback(error, null);
+      } else {
+        let byChannel = miniseed.byChannel(dataRecords);
+        let keys = Object.keys(byChannel);
+        let segments = [];
+        for(let i=0; i<keys.length; i++) {
+          let key = keys[i];
+          segments[i] = miniseed.merge(byChannel[key]);
+        }
+        callback(null, segments);
+      }
+  });
 }
  
 /** A seismogram plot, using d3. Note that you must have
