@@ -4,8 +4,7 @@
   "description": "Plotting seismic data in miniseed format using d3.",
   "main": "./lib/waveformplot.js",
   "dependencies": {
-    "d3": "^4.4.0",
-    "ntp-client": "^0.5.3",
+    "d3": "^4.4.1",
     "seisplotjs-miniseed": ">= 1.0.1"
   },
   "scripts": {
