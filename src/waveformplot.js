@@ -57,7 +57,7 @@ export function createPlotsBySelector(selector) {
             if (error) {
                 console.log("error loading data: "+error);
             } else {
-                let seismogram = new chart(svgParent, segments);
+                let seismogram = new chart(svgParent, segments, startDate, endDate);
                 seismogram.draw();
                 //seismogram.enableDrag();
                 // seismogram.enableZoom();
@@ -66,9 +66,25 @@ export function createPlotsBySelector(selector) {
   });
 }
 
-export function calcStartEndDates(start, end, duration) {
+export function calcClockOffset(serverTime) {
+  return new Date().getTime() - serverTime.getTime();
+}
+
+/** 
+Any two of start, end and duration can be specified, or just duration which
+then assumes end is now.
+start and end are Date objects, duration is in seconds.
+clockOffset is the milliseconds that should be subtracted from the local time
+ to get real world time, ie local - UTC 
+ or new Date().getTime() - serverDate.getTime()
+ default is zero.
+*/
+export function calcStartEndDates(start, end, duration, clockOffset) {
   let startDate;
   let endDate;
+  if (clockOffset === undefined) {
+    clockOffset = 0;
+  }
   if (start && end) {
     startDate = new Date(start);
     endDate = new Date(end);
@@ -79,7 +95,7 @@ export function calcStartEndDates(start, end, duration) {
     endDate = new Date(end);
     startDate = new Date(endDate.getTime()-parseFloat(duration)*1000);
   } else if (duration) {
-    endDate = new Date();
+    endDate = new Date(new Date().getTime()-clockOffset);
     startDate = new Date(endDate.getTime()-parseFloat(duration)*1000);
   } else {
     throw "need some combination of start, end and duration";
@@ -134,6 +150,30 @@ export function loadParseSplitUrl(url, callback) {
       }
   });
 }
+
+/* segments is an array of arrays of DataRecords
+*/
+export function calcDataStartEnd(segments) {
+    if (segments.length === 0) {
+      return null;
+    }
+    let dataStart = segments[0][0].start;
+    let dataEnd = segments[0][0].end;
+    for (let plotNum=0; plotNum < segments.length; plotNum++) {
+      for (let drNum = 0; drNum < segments[plotNum].length; drNum++) {
+        let record = segments[plotNum][drNum];
+        let s = record.start;
+        let e = record.end;
+        if ( s < dataStart) {
+          dataStart = s;
+        }
+        if ( dataEnd < e) {
+          dataEnd = e;
+        }
+      }
+    }
+    return { start: dataStart, end: dataEnd };
+  }
  
 /** A seismogram plot, using d3. Note that you must have
   * stroke and fill set in css like:<br>
@@ -144,10 +184,10 @@ export function loadParseSplitUrl(url, callback) {
   * in order to have the seismogram display. 
   */
 export class chart {
-  constructor(inSvgParent, inSegments) {
+  constructor(inSvgParent, inSegments, plotStartDate, plotEndDate) {
     this.throttleResize = true;
-    this.plotStart;
-    this.plotEnd;
+    this.plotStart = plotStartDate;
+    this.plotEnd = plotEndDate;
         
     let styleWidth = parseInt(inSvgParent.style("width")) ;
     let styleHeight = parseInt(inSvgParent.style("height")) ;
@@ -177,10 +217,10 @@ export class chart {
     this.svgParent = inSvgParent;
         
     if (this.segments.length > 0) {
-      if(!this.plotStart) {
+      if( ! this.plotStart ) {
         this.plotStart = this.segments[0][0].start;
       }
-      if(!this.plotEnd) {
+      if( ! this.plotEnd) {
         // fix this????
         this.plotEnd = this.segments[0][0].end;
       }
@@ -312,6 +352,7 @@ export class chart {
       }).curve(d3.curveLinear)(seg); // call the d3 function created by line with data
        // }).interpolate("linear")(seg); // call the d3 function created by line with data
   }
+
     
   draw() {
     let minAmp = 2 << 24;
@@ -320,13 +361,13 @@ export class chart {
     let e;
     let record;
     let n;
+    let startEnd = calcDataStartEnd(this.segments);
     if (this.segments.length > 0) {
-      if(!this.plotStart) {
-        this.plotStart = this.segments[0][0].start;
+      if( ! this.plotStart) {
+        this.plotStart = startEnd.start;
       }
-      if(!this.plotEnd) {
-        // fix this????
-        this.plotEnd = this.segments[0][0].end;
+      if( ! this.plotEnd) {
+        this.plotEnd = startEnd.end;
       }
     } else {
       console.log("WARN: segments length 0");
@@ -343,12 +384,6 @@ export class chart {
           if (maxAmp < record[n]) {
             maxAmp = record[n];
           }
-        }
-        if (s < this.plotStart) {
-          this.plotStart = s;
-        }
-        if (this.plotEnd < e) {
-          this.plotEnd = e;
         }
       }
     }
