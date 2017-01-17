@@ -29,6 +29,7 @@ export { miniseed , d3 };
   * }<br/>
   */
 export function createPlotsBySelector(selector) {
+  let clockOffset = 0; // should set from server
   d3.selectAll(selector).each(function(d) {
     let svgParent = d3.select(this);
     let net = svgParent.attr("net");
@@ -47,7 +48,7 @@ export function createPlotsBySelector(selector) {
       protocol = 'https:'
     }
 
-    let seisDates = calcStartEndDates(start, end, duration);
+    let seisDates = calcStartEndDates(start, end, duration, clockOffset);
     let startDate = seisDates.startDate;
     let endDate = seisDates.endDate;
 
@@ -401,7 +402,7 @@ export class chart {
         .append("rect")
         .attr("width", this.width)
         .attr("height", this.height);
-    this.xScale = d3.scaleTime().domain([ this.plotStart, this.plotEnd ])
+    this.xScale = d3.scaleUtc().domain([ this.plotStart, this.plotEnd ])
         .range([ 0, this.width ])
         .nice();
     this.yScale = d3.scaleLinear().domain([ minAmp, maxAmp ])
@@ -415,7 +416,7 @@ export class chart {
         .attr("transform",  "translate(0," + (this.height ) + " )")
         .call(this.xAxis);
     this.svgG.append("g").classed("y axis", true).call(this.yAxis);
-    let dataSvgG = this.svgG.append("g").classed("seisdata", true);
+    let dataSvgG = this.svgG.append("g").classed("seisdata", true).attr("clip-path", "url("+this.clipPathId+")");
         
         
     let insidePlotUUID = this.plotUUID;
@@ -498,6 +499,13 @@ export class chart {
   }
   setPlotEnd(value) {
     this.plotEnd = value;
+    this.xScale.domain([ this.plotStart, this.plotEnd ]);
+    this.resizeNeeded();
+    return this;
+  }
+  setPlotStartEnd(startDate, endDate) {
+    this.plotStart = startDate;
+    this.plotEnd = endDate;
     this.xScale.domain([ this.plotStart, this.plotEnd ]);
     this.resizeNeeded();
     return this;
