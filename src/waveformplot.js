@@ -204,6 +204,7 @@ export class chart {
     // d3 margin convention, see http://bl.ocks.org/mbostock/3019563
     
     this.segments = inSegments;
+    this.markers = [ ];
     this.svgParent;
     this.xScale;
     this.yScale;
@@ -351,7 +352,6 @@ export class chart {
       }).y(function(d) {
         return yScale(d);
       }).curve(d3.curveLinear)(seg); // call the d3 function created by line with data
-       // }).interpolate("linear")(seg); // call the d3 function created by line with data
   }
 
     
@@ -388,17 +388,19 @@ export class chart {
         }
       }
     }
+    this.minAmp = minAmp;
+    this.maxAmp = maxAmp;
     this.outerWidth = parseInt(this.svgParent.style("width")) ;
     this.outerHeight = parseInt(this.svgParent.style("height")) ;
     let svg = this.svgParent.append("svg");
     this.setWidthHeight(svg, this.outerWidth, this.outerHeight);
 
-    this.svgG = svg
+    let svgG = svg
         .append("g")
         .attr("transform", "translate(" + this.margin.left + "," + this.margin.top + ")");
         
 
-    this.svgG.append("defs").append("clipPath").attr("id", this.clipPathId)
+    svgG.append("defs").append("clipPath").attr("id", this.clipPathId)
         .append("rect")
         .attr("width", this.width)
         .attr("height", this.height);
@@ -412,11 +414,11 @@ export class chart {
 
     this.yAxis = d3.axisLeft().scale(this.yScale).ticks(5);
         
-    this.svgG.append("g").classed("x axis", true)
+    svgG.append("g").classed("x axis", true)
         .attr("transform",  "translate(0," + (this.height ) + " )")
         .call(this.xAxis);
-    this.svgG.append("g").classed("y axis", true).call(this.yAxis);
-    let dataSvgG = this.svgG.append("g").classed("seisdata", true).attr("clip-path", "url("+this.clipPathId+")");
+    svgG.append("g").classed("y axis", true).call(this.yAxis);
+    let dataSvgG = svgG.append("g").classed("seisdata", true).attr("clip-path", "url("+this.clipPathId+")");
         
         
     let insidePlotUUID = this.plotUUID;
@@ -433,6 +435,9 @@ export class chart {
         .attr("id", function(d) { return d.seisId()+'_'+insidePlotUUID;})
         .attr("d", function(d) {return insideCreateLineFunction(d, xScale, yScale);});
         
+  this.initMarkerSvg();
+  this.updateMarkers(this.markers);
+
     /*
     let seismogram = svgG.append("g").attr("class", "seismogram").attr("clip-path", "url(#"+clipPathId+")");
     
@@ -459,11 +464,91 @@ export class chart {
        .attr("transform-origin", "center center")
        .attr("transform", "rotate(-90)")
        .text(this.yLabel);
-    this.svgG.append("rect").classed("graphClickPane", true)
+    svgG.append("rect").classed("graphClickPane", true)
         .attr("fill", "none")
         .attr("width", this.width)
         .attr("height", this.height);
     this.resize();
+  }
+
+  initMarkerSvg() {
+    let svgP = this.svgParent;
+    let svg = svgP.select("svg");
+    let svgG = svg.select("g");
+    let chartThis = this;
+    let markerSvgG = svgG.append("g").classed("markerdata", true).attr("clip-path", "url("+this.clipPathId+")");
+    let markerLabelSvgG = svgG.append("g").classed("markerlabel", true).attr("clip-path", "url("+this.clipPathId+")");
+
+  }
+
+  updateMarkers(markers) {
+if ( ! markers) { markers = []; console.log("Markers is falsey");}
+console.log("updateMarkers: len="+markers.length);
+for(let i=0; i< markers.length; i++) {
+let m = markers[i];
+console.log(i+"  "+m.name+" "+m.time+"  ");
+}
+    // marker overlay
+    let svgP = this.svgParent;
+    let svg = svgP.select("svg");
+    let svgG = svg.select("g");
+    let chartThis = this;
+
+    let labelSvgG = svgG.select("g.markerlabel");
+    let labelSelection = labelSvgG.selectAll("g").data(this.markers)
+    labelSelection.exit().remove();
+    let textOffset = .85;
+    let textAngle = 45;
+    let radianTextAngle = textAngle*Math.PI/180;
+
+    let labelG = labelSelection.enter()
+        .append("g")
+        .attr("transform", function(marker) {
+          let textx = 1+chartThis.xScale( Date.parse(marker.time));
+          let texty = chartThis.yScale(chartThis.minAmp + textOffset*(chartThis.maxAmp-chartThis.minAmp));
+          return  "translate("+textx+","+texty+") rotate("+textAngle+")";});
+    labelG.append("text")
+        .attr("dy", "-0.35em")
+        .text(function(marker) {return marker.name;})
+        .call(function(selection) {
+          selection.each(function(t){t.bbox = this.getBBox();});
+        }); 
+    // draw/insert flag dehind/before text
+    labelG.insert("polygon", "text")
+        .attr("points", function(marker) {
+          let textx = 1+chartThis.xScale( Date.parse(marker.time));
+          let texty = chartThis.yScale(chartThis.minAmp + textOffset*(chartThis.maxAmp-chartThis.minAmp));
+console.log("text bbox: "+marker.bbox.x+" "+marker.bbox.y);
+//          return textx+","+texty+" "
+//                 +textx+","+chartThis.yScale(chartThis.maxAmp)+" "
+//                 +(textx+marker.bbox.width)+","+(chartThis.yScale(chartThis.maxAmp)+marker.bbox.height)+" "
+//                 +(textx+marker.bbox.width)+","+(chartThis.yScale(chartThis.maxAmp));
+          return "0,0 "
+            +(-1*marker.bbox.height*Math.tan(radianTextAngle))+",-"+marker.bbox.height+" "
+            +marker.bbox.width+",-"+marker.bbox.height+" "
+            +marker.bbox.width+",0";
+        })
+        .style("fill", "#F5F5F5A0");
+
+    // draw vertical line
+    let markerSvgG = svgG.select("g.markerdata");
+    let markerSelection = markerSvgG.selectAll("path").data(markers)
+    markerSelection.exit().remove();
+
+    markerSelection.enter().append("path")
+        .classed("markerpath", true)
+        .style("fill", "none")
+        .style("stroke", "black")
+        .style("stroke-width", "1px")
+        .attr("d", function(marker) {
+          return d3.line()
+            .x(function(d) {
+              return chartThis.xScale( Date.parse(marker.time));
+            }).y(function(d, i) {
+              return chartThis.yScale(d);
+            }).curve(d3.curveLinear)([ chartThis.minAmp, chartThis.maxAmp ] ); // call the d3 function created by line with data
+
+        });
   }
 
   setWidthHeight(svg, nOuterWidth, nOuterHeight) {
@@ -553,6 +638,13 @@ export class chart {
     if (!arguments.length)
       return this.ySublabel;
     this.ySublabel = value;
+    return this;
+  }
+  setMarkers(value) {
+    if (! arguments.length) 
+      return this.markers;
+    this.markers = value;
+    this.updateMarkers(value);
     return this;
   }
 }
