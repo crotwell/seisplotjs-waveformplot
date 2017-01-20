@@ -410,9 +410,9 @@ export class chart {
     this.yScale = d3.scaleLinear().domain([ minAmp, maxAmp ])
         .range([ this.height, 0 ])
         .nice();
-    this.xAxis = d3.axisBottom().scale(this.xScale).ticks(5);
+    this.xAxis = d3.axisBottom().scale(this.xScale).ticks(7);
 
-    this.yAxis = d3.axisLeft().scale(this.yScale).ticks(5);
+    this.yAxis = d3.axisLeft().scale(this.yScale).ticks(5, "3e");
         
     svgG.append("g").classed("x axis", true)
         .attr("transform",  "translate(0," + (this.height ) + " )")
