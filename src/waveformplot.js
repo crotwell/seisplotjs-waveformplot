@@ -44,8 +44,8 @@ export function createPlotsBySelector(selector) {
     if (! host) {
         host = "service.iris.edu";
     }
-    if ("https:" == document.location.protocol) {
-      protocol = 'https:'
+    if (document && "https:" == document.location.protocol) {
+      protocol = 'https:';
     }
 
     let seisDates = calcStartEndDates(start, end, duration, clockOffset);
@@ -60,8 +60,6 @@ export function createPlotsBySelector(selector) {
             } else {
                 let seismogram = new chart(svgParent, segments, startDate, endDate);
                 seismogram.draw();
-                //seismogram.enableDrag();
-                // seismogram.enableZoom();
             }
         });
   });
@@ -152,7 +150,7 @@ export function loadParseSplitUrl(url, callback) {
   });
 }
 
-/* segments is an array of arrays of DataRecords
+/* segments is an array of arrays of DataRecords or seismogram segments
 */
 export function calcDataStartEnd(segments) {
     if (segments.length === 0) {
@@ -176,6 +174,40 @@ export function calcDataStartEnd(segments) {
     return { start: dataStart, end: dataEnd };
   }
  
+export function findStartEnd(data, accumulator) {
+    if ( Array.isArray(data)) {
+       for(let i=0; i< data.length; i++) {
+         accumulator = findStartEnd(data[i], accumulator);
+       }
+    } else {
+       // assume single segment object
+       let out = accumulator;
+       if ( ! accumulator) {
+         out = {};
+       }
+       if ( ! accumulator || data.start < accumulator.start) {
+         out.start = data.start;
+       }
+       if ( ! accumulator || accumulator.end < data.end ) {
+         out.end = data.end;
+       }
+       accumulator = out;
+    }
+    return accumulator;
+  }
+
+export function findMinMax(data, minMaxAccumulator) {
+    if ( Array.isArray(data)) {
+       for(let i=0; i< data.length; i++) {
+         minMaxAccumulator = findMinMax(data[i], minMaxAccumulator);
+       }
+    } else {
+       // assume single segment object
+       minMaxAccumulator = miniseed.segmentMinMax(data, minMaxAccumulator);
+    }
+    return minMaxAccumulator;
+  }
+
 /** A seismogram plot, using d3. Note that you must have
   * stroke and fill set in css like:<br>
   * path.seispath {
@@ -186,270 +218,121 @@ export function calcDataStartEnd(segments) {
   */
 export class chart {
   constructor(inSvgParent, inSegments, plotStartDate, plotEndDate) {
-    this.throttleResize = true;
-    this.plotStart = plotStartDate;
-    this.plotEnd = plotEndDate;
-        
-    let styleWidth = parseInt(inSvgParent.style("width")) ;
-    let styleHeight = parseInt(inSvgParent.style("height")) ;
-    if (styleWidth == 0) { styleWidth = 50;}
-    if (styleHeight == 0) { styleHeight = 100;}
-
-    // d3 margin convention, see http://bl.ocks.org/mbostock/3019563
-    this.margin = {top: 20, right: 20, bottom: 40, left: 75};
-    this.outerWidth = styleWidth;
-    this.outerHeight = styleHeight;
-    this.width = this.outerWidth - this.margin.left - this.margin.right;
-    this.height = this.outerHeight - this.margin.top - this.margin.bottom;
-    // d3 margin convention, see http://bl.ocks.org/mbostock/3019563
-    
-    this.segments = inSegments;
-    this.markers = [ ];
-    this.svgParent;
-    this.xScale;
-    this.yScale;
-    this.xAxis;
-    this.yAxis;
+    //this.xScaleFormat = "3e"
+    this.yScaleFormat = "3e"
     this.xLabel = "Time";
     this.xSublabel = "";
     this.yLabel = "Amplitude";
     this.ySublabel = "";
-    this.plotUUID = guid();
-    this.clipPathId = "clippath_"+this.plotUUID;
     this.svgParent = inSvgParent;
-        
-    if (this.segments.length > 0) {
-      if( ! this.plotStart ) {
-        this.plotStart = this.segments[0][0].start;
-      }
-      if( ! this.plotEnd) {
-        // fix this????
-        this.plotEnd = this.segments[0][0].end;
-      }
-    } else {
-      console.log("WARNING segments is length 0");
+    this.segments = inSegments;
+    this.outerWidth = parseInt(inSvgParent.style("width")) ;
+    this.outerHeight = parseInt(inSvgParent.style("height")) ;
+    if (this.outerWidth == 0) { this.outerWidth = 100;}
+    if (this.outerHeight == 0) { this.outerHeight = 200;}
+
+    this.margin = {top: 20, right: 20, bottom: 30, left: 60};
+    this.width  = this.outerWidth - this.margin.left - this.margin.right;
+    this.height = this.outerHeight - this.margin.top - this.margin.bottom;
+
+    this.svg = inSvgParent.append("svg")
+      .attr("height", this.outerHeight)
+      .attr("width", this.outerWidth);
+
+    this.parseDate = d3.timeParse("%b %Y");
+
+    if ( ! plotStartDate || ! plotEndDate) {
+      let st = findStartEnd(inSegments);
+      plotStartDate = st.start;
+      plotEndDate = st.end;
     }
-    //  fix this....
-    //  addResizeHandler(resize);
+
+    this.xScale = d3.scaleUtc().range([0, this.width])
+      .domain([plotStartDate, plotEndDate]);
+    this.origXScale = this.xScale;
+    this.yScale = d3.scaleLinear().range([this.height, 0]);
+
+    this.xAxis = d3.axisBottom(this.xScale); //.ticks(10, xScaleFormat);
+    this.yAxis = d3.axisLeft(this.yScale).ticks(8, this.yScaleFormat);
+
+    let mythis = this;
+    this.lineFunc = d3.line()
+      .curve(d3.curveLinear)
+      .x(function(d, i) {return mythis.xScale(d.time); })
+      .y(function(d, i) {return mythis.yScale(d.y); });
+
+    this.zoom = d3.zoom()
+      .scaleExtent([1, 32])
+      .translateExtent([[0, 0], [this.width, this.height]])
+      .extent([[0, 0], [this.width, this.height]])
+      .on("zoom."+inSegments[0].codes(), function(d,i) {
+          mythis.zoomed(mythis);
+        });
+
+    this.svg.append("defs").append("clipPath")
+        .attr("id", "clip")
+      .append("rect")
+        .attr("width", this.width*3)
+        .attr("height", this.height*3);
+
+    this.g = this.svg.append("g")
+      .attr("transform", "translate(" + this.margin.left + "," + this.margin.top + ")");
+    this.g.append("g").attr("class", "allsegments");
+    this.svg.call(this.zoom);
+
+    let minMax = findMinMax(inSegments);
+    this.yScale.domain(minMax); 
+
+    // create marker g
+    let markerLabelSvgG = this.g.append("g").classed("allmarkers", true)
+        .attr("style", "clip-path: url(#clip)")
   }
 
-  enableZoom() {
-    console.log("enableZoom does not work yet");
-    let zoomed = function() {
-      console.log("zooming, or we should be at least...");
-      this.svgParent.select('svg').attr("transform", d3.event.transform);
-      this.svgParent.select('.x.axis').call(this.xAxis.scale(d3.event.transform.rescaleX(this.xScale)));
-      //gY.call(yAxis.scale(d3.event.transform.rescaleY(y)));
-    };
-    let zoom = d3.zoom().on('zoom', zoomed);
-    this.svgParent.select('svg').call(zoom);
-  }
-
-  enableDrag() {
-    console.log("enableDrag does not work yet");
-    let myThis = this;
-    let drag = d3.behavior.drag()
-                          .origin(function() {
-                             return {x: 0, y: 0};
-                          })
-                          .on("drag", function() {
-                             return myThis.dragmove.call(myThis);
-                          });
-    let svgP = this.svgParent;
-    let svg = svgP.select("svg");
-    let svgG = svg.select("g");
-    let clickPane = svgG.select("rect.graphClickPane");
-    clickPane.call(drag);
-  }
-    
-  append(key, segment) {
-    console.log("append doesnot work...");
-    this.segments.push(segment);
-  }
-    
-  dragmove() {
-    d3.event.sourceEvent.stopPropagation(); // silence other listeners
-    let rectWidth = this.width;
-
-    let pStart = this.plotStart;
-    let pEnd = this.plotEnd;
-    let timeWidth = pEnd - pStart;
-    let timeShift = Math.round(timeWidth*d3.event.dx/rectWidth);
-    let zStart =  new Date(pStart.getTime() - timeShift);
-    let zEnd = new Date(pEnd.getTime() - timeShift);
-    this.setPlotStart(zStart);
-    this.setPlotEnd(zEnd);
-
-  }
-
-  resize() {
-    /*
-     * This only works if added to the window, see addResizeHandler in crocusplot.js
-     */
-
-    let svgP = this.svgParent;
-    let svg = svgP.select("svg");
-    svg.classed("waveformPlotSVG", true);
-    let svgG = svg.select("g");
-    
-    let styleWidth = parseInt(svgP.style("width")) ;
-    let styleHeight = parseInt(svgP.style("height")) ;
-    this.setWidthHeight(svg, styleWidth, styleHeight);
-
-    /* Update the range of the scale with new width/height */
-    this.xScale.range([0, this.width]);
-    this.yScale.range([this.height, 0]);
-        
-    /* Update the axis with the new scale */
-    svgG.select('.x.axis')
-        .attr("transform",  "translate(0," + (this.height ) + " )")
-        .call(this.xAxis);
-
-    svgG.selectAll('.y.axis')
-        .call(this.yAxis);
-
-    svg.select('g.xLabel')
-       .attr("transform", "translate("+(this.margin.left+(this.width)/2)+", "+(this.outerHeight  - 6)+")");
-            
-    svg.select('g.yLabel')
-       .attr("transform", "translate(0, "+(this.margin.top+(this.height)/2)+")");
-            
-
-    svg.select('#'+this.clipPathId).select("rect")
-       .attr("width", this.width)
-       .attr("height", this.height);
-        
-    svgG.select("rect.graphClickPane")
-        .attr("width", this.width)
-        .attr("height", this.height);
-        
-    /* Force D3 to recalculate and update the line segments*/
-    for (let plotNum=0; plotNum < this.segments.length; plotNum++) {
-      for (let drNum = 0; drNum < this.segments[plotNum].length; drNum++) { 
-        svgG.select('#'+this.segments[plotNum][drNum].seisId()+'_'+this.plotUUID)
-            .attr("d", this.createLineFunction(this.segments[plotNum][drNum], this.xScale, this.yScale));
-      }
-    }
-  }
-
-  getXScale() {
-    return this.xScale;
-  }
-  getYScale() {
-    return this.yScale;
-  }
-  getResizeFunction() {
-    return this.resize;
-  }
-    
-  createLineFunction(segment, in_xScale, in_yScale) {
-    let seg = segment;
-    let xScale = in_xScale;
-    let yScale = in_yScale;
-    return d3.line()
-      .x(function(d, i) {
-        return xScale(seg.timeOfSample(i));
-      }).y(function(d) {
-        return yScale(d);
-      }).curve(d3.curveLinear)(seg); // call the d3 function created by line with data
-  }
-
-    
   draw() {
-    let minAmp = 2 << 24;
-    let maxAmp = -1 * (minAmp);
-    let s;
-    let e;
-    let record;
-    let n;
-    let startEnd = calcDataStartEnd(this.segments);
-    if (this.segments.length > 0) {
-      if( ! this.plotStart) {
-        this.plotStart = startEnd.start;
-      }
-      if( ! this.plotEnd) {
-        this.plotEnd = startEnd.end;
-      }
-    } else {
-      console.log("WARN: segments length 0");
-    }
-    for (let plotNum=0; plotNum < this.segments.length; plotNum++) {
-      for (let drNum = 0; drNum < this.segments[plotNum].length; drNum++) {
-        record = this.segments[plotNum][drNum];
-        s = record.start;
-        e = record.end;
-        for (n = 0; n < record.length; n++) {
-          if (minAmp > record[n]) {
-            minAmp = record[n];
-          }
-          if (maxAmp < record[n]) {
-            maxAmp = record[n];
-          }
-        }
-      }
-    }
-    this.minAmp = minAmp;
-    this.maxAmp = maxAmp;
-    this.outerWidth = parseInt(this.svgParent.style("width")) ;
-    this.outerHeight = parseInt(this.svgParent.style("height")) ;
-    let svg = this.svgParent.append("svg");
-    this.setWidthHeight(svg, this.outerWidth, this.outerHeight);
+    this.drawSegments(this.segments, this.g.select("g.allsegments"));
+    this.drawAxis(this.g);
+    this.drawAxisLabels(this.svg);
+  }
 
-    let svgG = svg
+  drawSegments(segments, svgG) {
+    let drawG = svgG;
+    let mythis = this;
+
+
+      let segmentG = drawG
+//        .append("g").attr("class", "segArray")
+        .selectAll("g")
+        .data(segments)
+        .enter()
         .append("g")
-        .attr("transform", "translate(" + this.margin.left + "," + this.margin.top + ")");
-        
+          .attr("class", "segment");
 
-    svgG.append("defs").append("clipPath").attr("id", this.clipPathId)
-        .append("rect")
-        .attr("width", this.width)
-        .attr("height", this.height);
-    this.xScale = d3.scaleUtc().domain([ this.plotStart, this.plotEnd ])
-        .range([ 0, this.width ])
-        .nice();
-    this.yScale = d3.scaleLinear().domain([ minAmp, maxAmp ])
-        .range([ this.height, 0 ])
-        .nice();
-    this.xAxis = d3.axisBottom().scale(this.xScale).ticks(7);
+       segmentG
+        .append("path")
+          .attr("class", "seispath")
+          .attr("style", "clip-path: url(#clip)")
+          .attr("d", function(seg) { 
+             return mythis.lineFunc(seg.y.map(function(d,i) {
+               return {time: seg.timeOfSample(i), y: d };
+             }));
+           });
+  }
 
-    this.yAxis = d3.axisLeft().scale(this.yScale).ticks(5, "3e");
-        
-    svgG.append("g").classed("x axis", true)
-        .attr("transform",  "translate(0," + (this.height ) + " )")
+  drawAxis(svgG) { 
+    svgG.append("g")
+        .attr("class", "axis axis--x")
+        .attr("transform", "translate(0," + this.height + ")")
         .call(this.xAxis);
-    svgG.append("g").classed("y axis", true).call(this.yAxis);
-    let dataSvgG = svgG.append("g").classed("seisdata", true).attr("clip-path", "url("+this.clipPathId+")");
-        
-        
-    let insidePlotUUID = this.plotUUID;
-    let insideCreateLineFunction = this.createLineFunction;
-    let xScale = this.xScale;
-    let yScale = this.yScale;
-    let seisG = dataSvgG.selectAll("g").data(this.segments).enter().append("g").attr("id", function(d) {return d[0].seisId();});
-    seisG.selectAll("path").data(function(d) {return d;})
-        .enter().append("path")
-        .classed("seispath", true)
-//        .style("fill", "none")
-//        .style("stroke", "black")
-//        .style("stroke-width", "1px")
-        .attr("id", function(d) { return d.seisId()+'_'+insidePlotUUID;})
-        .attr("d", function(d) {return insideCreateLineFunction(d, xScale, yScale);});
-        
-  this.initMarkerSvg();
-  this.updateMarkers(this.markers);
 
-    /*
-    let seismogram = svgG.append("g").attr("class", "seismogram").attr("clip-path", "url(#"+clipPathId+")");
-    
-    let seisLine = seismogram.selectAll("path").data(segments, function(d) {return d.seisId();});
-    seisLine.enter().append("path")
-        .attr("id", function(d) {return d.seisId()+'_'+plotUUID})
-        .attr("d", function(d) {return createLineFunction(d)});
-    seisLine.exit().remove();
-    */
+    svgG.append("g")
+        .attr("class", "axis axis--y")
+        .call(this.yAxis);
+  }
+
+  drawAxisLabels(svg) {
     svg.append("g")
        .classed("xLabel", true)
-       .attr("transform", "translate("+(this.margin.left+(this.width)/2)+", "+(this.outerHeight  - 6)+")")
+       .attr("transform", "translate("+(this.margin.left+(this.width)/2)+", "+(this.outerHeight   )+")")
        .append("text").classed("x label", true)
        .attr("text-anchor", "middle")
        .text(this.xLabel);
@@ -464,38 +347,60 @@ export class chart {
        .attr("transform-origin", "center center")
        .attr("transform", "rotate(-90)")
        .text(this.yLabel);
-    svgG.append("rect").classed("graphClickPane", true)
-        .attr("fill", "none")
-        .attr("width", this.width)
-        .attr("height", this.height);
-    this.resize();
-  }
-
-  initMarkerSvg() {
-    let svgP = this.svgParent;
-    let svg = svgP.select("svg");
-    let svgG = svg.select("g");
-    let chartThis = this;
-    let markerSvgG = svgG.append("g").classed("markerdata", true).attr("clip-path", "url("+this.clipPathId+")");
-    let markerLabelSvgG = svgG.append("g").classed("markerlabel", true).attr("clip-path", "url("+this.clipPathId+")");
 
   }
+
+  resetZoom() {
+    let mythis = this;
+    this.xScale = this.origXScale;
+    this.g.select(".segment").select("path")
+          .attr("d", function(seg) {
+             let lf = mythis.lineFunc;
+             lf.x(function(d) { return mythis.xScale(d.time); });
+             return lf(seg.y.map(function(d,i) {
+               return {time: seg.timeOfSample(i), y: d };
+             }));
+           });
+    this.g.select("g.allmarkers").selectAll("g.marker")
+        .attr("transform", function(marker) {
+          let textx = this.xScale( Date.parse(marker.time));
+          return  "translate("+textx+","+0+")";});
+    this.g.select(".axis--x").call(this.xAxis.scale(this.xScale));
+  }
+
+
+  zoomed(mythis) {
+    let t = d3.event.transform;
+    let xt = t.rescaleX(this.xScale);
+    this.g.selectAll(".segment").select("path")
+          .attr("d", function(seg, i) { 
+             let lf = mythis.lineFunc;
+             lf.x(function(d) { return xt(d.time); });
+             return lf(seg.y.map(function(d,i) {
+               return {time: seg.timeOfSample(i), y: d };
+             }));
+           });
+    this.g.select("g.allmarkers").selectAll("g.marker")
+        .attr("transform", function(marker) {
+          let textx = xt( Date.parse(marker.time));
+          return  "translate("+textx+","+0+")";});
+
+    this.g.select(".axis--x").call(this.xAxis.scale(xt));
+  }
+
+
+
 
   updateMarkers(markers) {
-if ( ! markers) { markers = []; console.log("Markers is falsey");}
-console.log("updateMarkers: len="+markers.length);
-for(let i=0; i< markers.length; i++) {
-let m = markers[i];
-console.log(i+"  "+m.name+" "+m.time+"  ");
-}
+    if ( ! markers) { markers = []; }
     // marker overlay
     let svgP = this.svgParent;
     let svg = svgP.select("svg");
     let svgG = svg.select("g");
     let chartThis = this;
 
-    let labelSvgG = svgG.select("g.markerlabel");
-    let labelSelection = labelSvgG.selectAll("g").data(this.markers)
+    let labelSvgG = svgG.select("g.allmarkers");
+    let labelSelection = labelSvgG.selectAll("g").data(this.markers);
     labelSelection.exit().remove();
     let textOffset = .85;
     let textAngle = 45;
@@ -503,39 +408,35 @@ console.log(i+"  "+m.name+" "+m.time+"  ");
 
     let labelG = labelSelection.enter()
         .append("g")
+        .attr("class", "marker")
         .attr("transform", function(marker) {
-          let textx = 1+chartThis.xScale( Date.parse(marker.time));
-          let texty = chartThis.yScale(chartThis.minAmp + textOffset*(chartThis.maxAmp-chartThis.minAmp));
-          return  "translate("+textx+","+texty+") rotate("+textAngle+")";});
-    labelG.append("text")
+          let textx = chartThis.xScale( Date.parse(marker.time));
+          return  "translate("+textx+","+0+")";});
+    let innerTextG = labelG
+      .append("g")
+        .attr("class", "markertext")
+        .attr("transform", function(marker) {
+// shift up by percentage and right by 1 pixel
+          let texty = chartThis.yScale.range()[0] - textOffset*(chartThis.yScale.range()[0]-chartThis.yScale.range()[1]);
+          return  "translate("+0+","+texty+") rotate("+textAngle+")";});
+    innerTextG.append("text")
         .attr("dy", "-0.35em")
         .text(function(marker) {return marker.name;})
         .call(function(selection) {
           selection.each(function(t){t.bbox = this.getBBox();});
         }); 
     // draw/insert flag dehind/before text
-    labelG.insert("polygon", "text")
+    innerTextG.insert("polygon", "text")
         .attr("points", function(marker) {
-          let textx = 1+chartThis.xScale( Date.parse(marker.time));
-          let texty = chartThis.yScale(chartThis.minAmp + textOffset*(chartThis.maxAmp-chartThis.minAmp));
-console.log("text bbox: "+marker.bbox.x+" "+marker.bbox.y);
-//          return textx+","+texty+" "
-//                 +textx+","+chartThis.yScale(chartThis.maxAmp)+" "
-//                 +(textx+marker.bbox.width)+","+(chartThis.yScale(chartThis.maxAmp)+marker.bbox.height)+" "
-//                 +(textx+marker.bbox.width)+","+(chartThis.yScale(chartThis.maxAmp));
+          let bboxH = marker.bbox.height+5;
+          let bboxW = marker.bbox.width;
           return "0,0 "
-            +(-1*marker.bbox.height*Math.tan(radianTextAngle))+",-"+marker.bbox.height+" "
-            +marker.bbox.width+",-"+marker.bbox.height+" "
-            +marker.bbox.width+",0";
+            +(-1*bboxH*Math.tan(radianTextAngle))+",-"+bboxH+" "
+            +bboxW+",-"+bboxH+" "
+            +bboxW+",0";
         })
         .style("fill", "#F5F5F5A0");
-
-    // draw vertical line
-    let markerSvgG = svgG.select("g.markerdata");
-    let markerSelection = markerSvgG.selectAll("path").data(markers)
-    markerSelection.exit().remove();
-
-    markerSelection.enter().append("path")
+    labelG.append("path")
         .classed("markerpath", true)
         .style("fill", "none")
         .style("stroke", "black")
@@ -543,10 +444,11 @@ console.log("text bbox: "+marker.bbox.x+" "+marker.bbox.y);
         .attr("d", function(marker) {
           return d3.line()
             .x(function(d) {
-              return chartThis.xScale( Date.parse(marker.time));
+              return -1;
+//              return chartThis.xScale( Date.parse(marker.time));
             }).y(function(d, i) {
-              return chartThis.yScale(d);
-            }).curve(d3.curveLinear)([ chartThis.minAmp, chartThis.maxAmp ] ); // call the d3 function created by line with data
+              return (i==0) ? 0 : chartThis.yScale.range()[0];
+            }).curve(d3.curveLinear)([ chartThis.yScale.domain()[0], chartThis.yScale.domain()[1] ] ); // call the d3 function created by line with data
 
         });
   }
