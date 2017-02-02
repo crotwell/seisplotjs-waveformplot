@@ -49,8 +49,8 @@ export function createPlotsBySelector(selector) {
     }
 
     let seisDates = calcStartEndDates(start, end, duration, clockOffset);
-    let startDate = seisDates.startDate;
-    let endDate = seisDates.endDate;
+    let startDate = seisDates.start;
+    let endDate = seisDates.end;
 
     let url = formRequestUrl(protocol, host, net, sta, loc, chan, startDate, endDate);
     loadParseSplitUrl(url,
@@ -99,7 +99,7 @@ export function calcStartEndDates(start, end, duration, clockOffset) {
   } else {
     throw "need some combination of start, end and duration";
   }
-  return { "startDate": startDate, "endDate": endDate };
+  return { "start": startDate, "end": endDate };
 }
 
 export function formRequestUrl(protocol, host, net, sta, loc, chan, startDate, endDate) {
@@ -150,30 +150,6 @@ export function loadParseSplitUrl(url, callback) {
   });
 }
 
-/* segments is an array of arrays of DataRecords or seismogram segments
-*/
-export function calcDataStartEnd(segments) {
-    if (segments.length === 0) {
-      return null;
-    }
-    let dataStart = segments[0][0].start;
-    let dataEnd = segments[0][0].end;
-    for (let plotNum=0; plotNum < segments.length; plotNum++) {
-      for (let drNum = 0; drNum < segments[plotNum].length; drNum++) {
-        let record = segments[plotNum][drNum];
-        let s = record.start;
-        let e = record.end;
-        if ( s < dataStart) {
-          dataStart = s;
-        }
-        if ( dataEnd < e) {
-          dataEnd = e;
-        }
-      }
-    }
-    return { start: dataStart, end: dataEnd };
-  }
- 
 export function findStartEnd(data, accumulator) {
     if ( Array.isArray(data)) {
        for(let i=0; i< data.length; i++) {
@@ -265,7 +241,7 @@ export class chart {
       .scaleExtent([1, 32])
       .translateExtent([[0, 0], [this.width, this.height]])
       .extent([[0, 0], [this.width, this.height]])
-      .on("zoom."+inSegments[0].codes(), function(d,i) {
+      .on("zoom", function(d,i) {
           mythis.zoomed(mythis);
         });
 
@@ -302,12 +278,14 @@ export class chart {
       let segmentG = drawG
 //        .append("g").attr("class", "segArray")
         .selectAll("g")
-        .data(segments)
-        .enter()
-        .append("g")
-          .attr("class", "segment");
+        .data(segments);
+
+       segmentG.exit().remove();
 
        segmentG
+        .enter()
+        .append("g")
+          .attr("class", "segment")
         .append("path")
           .attr("class", "seispath")
           .attr("style", "clip-path: url(#clip)")
@@ -372,6 +350,11 @@ export class chart {
   zoomed(mythis) {
     let t = d3.event.transform;
     let xt = t.rescaleX(this.xScale);
+    mythis.redrawWithXScale(xt);
+  }
+
+  redrawWithXScale(xt) {
+    let mythis = this;
     this.g.selectAll(".segment").select("path")
           .attr("d", function(seg, i) { 
              let lf = mythis.lineFunc;
@@ -387,9 +370,6 @@ export class chart {
 
     this.g.select(".axis--x").call(this.xAxis.scale(xt));
   }
-
-
-
 
   updateMarkers(markers) {
     if ( ! markers) { markers = []; }
@@ -409,6 +389,7 @@ export class chart {
     let labelG = labelSelection.enter()
         .append("g")
         .attr("class", "marker")
+           // translate so marker time is zero
         .attr("transform", function(marker) {
           let textx = chartThis.xScale( Date.parse(marker.time));
           return  "translate("+textx+","+0+")";});
@@ -416,7 +397,7 @@ export class chart {
       .append("g")
         .attr("class", "markertext")
         .attr("transform", function(marker) {
-// shift up by percentage and right by 1 pixel
+    // shift up by textOffset percentage
           let texty = chartThis.yScale.range()[0] - textOffset*(chartThis.yScale.range()[0]-chartThis.yScale.range()[1]);
           return  "translate("+0+","+texty+") rotate("+textAngle+")";});
     innerTextG.append("text")
@@ -444,8 +425,7 @@ export class chart {
         .attr("d", function(marker) {
           return d3.line()
             .x(function(d) {
-              return -1;
-//              return chartThis.xScale( Date.parse(marker.time));
+              return 0; // g is translated so marker time is zero
             }).y(function(d, i) {
               return (i==0) ? 0 : chartThis.yScale.range()[0];
             }).curve(d3.curveLinear)([ chartThis.yScale.domain()[0], chartThis.yScale.domain()[1] ] ); // call the d3 function created by line with data
@@ -479,22 +459,16 @@ export class chart {
   }
 
   setPlotStart(value) {
-    this.plotStart = value;
-    this.xScale.domain([ this.plotStart, this.plotEnd ]);
-    this.resizeNeeded();
-    return this;
+    return setPlotStartEnd(value, this.xScale.domain()[1]);
   }
   setPlotEnd(value) {
-    this.plotEnd = value;
-    this.xScale.domain([ this.plotStart, this.plotEnd ]);
-    this.resizeNeeded();
-    return this;
+    return this.setPlotStartEnd(this.xScale.domain()[0], value);
   }
   setPlotStartEnd(startDate, endDate) {
     this.plotStart = startDate;
     this.plotEnd = endDate;
     this.xScale.domain([ this.plotStart, this.plotEnd ]);
-    this.resizeNeeded();
+    this.redrawWithXScale(this.xScale);
     return this;
   }
     
@@ -548,6 +522,23 @@ export class chart {
     this.markers = value;
     this.updateMarkers(value);
     return this;
+  }
+  append(seismogram) {
+    let mythis = this;
+    this.segments.push(seismogram);
+    let minMax = findMinMax(this.segments);
+    this.yScale.domain(minMax); 
+console.log("TODO: Do something to draw new segment...");
+    this.drawSegments(this.segments, this.g.select("g.allsegments"));
+  }
+  trim(timeWindow) {
+    this.segments = this.segments.filter(function(d) {
+      return d.start.getTime() > timeWindow.start.getTime();
+    });
+    let minMax = findMinMax(this.segments);
+    this.yScale.domain(minMax); 
+    this.drawSegments(this.segments, this.g.select("g.allsegments"));
+    console.log("TODO: trim seismograms outside window....");
   }
 }
 
