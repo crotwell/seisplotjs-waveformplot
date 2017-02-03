@@ -194,26 +194,17 @@ export function findMinMax(data, minMaxAccumulator) {
   */
 export class chart {
   constructor(inSvgParent, inSegments, plotStartDate, plotEndDate) {
-    //this.xScaleFormat = "3e"
-    this.yScaleFormat = "3e"
+    this.xScaleFormat = multiFormatHour;
+    this.yScaleFormat = "3e";
     this.xLabel = "Time";
     this.xSublabel = "";
     this.yLabel = "Amplitude";
     this.ySublabel = "";
     this.svgParent = inSvgParent;
     this.segments = inSegments;
-    this.outerWidth = parseInt(inSvgParent.style("width")) ;
-    this.outerHeight = parseInt(inSvgParent.style("height")) ;
-    if (this.outerWidth == 0) { this.outerWidth = 100;}
-    if (this.outerHeight == 0) { this.outerHeight = 200;}
-
     this.margin = {top: 20, right: 20, bottom: 30, left: 60};
-    this.width  = this.outerWidth - this.margin.left - this.margin.right;
-    this.height = this.outerHeight - this.margin.top - this.margin.bottom;
 
-    this.svg = inSvgParent.append("svg")
-      .attr("height", this.outerHeight)
-      .attr("width", this.outerWidth);
+    this.svg = inSvgParent.append("svg");
 
     this.parseDate = d3.timeParse("%b %Y");
 
@@ -223,13 +214,17 @@ export class chart {
       plotEndDate = st.end;
     }
 
-    this.xScale = d3.scaleUtc().range([0, this.width])
+    this.xScale = d3.scaleUtc()
       .domain([plotStartDate, plotEndDate]);
     this.origXScale = this.xScale;
-    this.yScale = d3.scaleLinear().range([this.height, 0]);
+    this.yScale = d3.scaleLinear();
 
-    this.xAxis = d3.axisBottom(this.xScale); //.ticks(10, xScaleFormat);
+    this.xAxis = d3.axisBottom(this.xScale).tickFormat(this.xScaleFormat);
     this.yAxis = d3.axisLeft(this.yScale).ticks(8, this.yScaleFormat);
+
+    //sets height and width and things that depend on those
+    this.setWidthHeight(parseInt(inSvgParent.style("width")), 
+                        parseInt(inSvgParent.style("height")));
 
     let mythis = this;
     this.lineFunc = d3.line()
@@ -238,7 +233,7 @@ export class chart {
       .y(function(d, i) {return mythis.yScale(d.y); });
 
     this.zoom = d3.zoom()
-      .scaleExtent([1, 32])
+      .scaleExtent([1/2, 32])
       .translateExtent([[0, 0], [this.width, this.height]])
       .extent([[0, 0], [this.width, this.height]])
       .on("zoom", function(d,i) {
@@ -248,8 +243,8 @@ export class chart {
     this.svg.append("defs").append("clipPath")
         .attr("id", "clip")
       .append("rect")
-        .attr("width", this.width*3)
-        .attr("height", this.height*3);
+        .attr("width", this.width)
+        .attr("height", this.height);
 
     this.g = this.svg.append("g")
       .attr("transform", "translate(" + this.margin.left + "," + this.margin.top + ")");
@@ -262,6 +257,10 @@ export class chart {
     // create marker g
     let markerLabelSvgG = this.g.append("g").classed("allmarkers", true)
         .attr("style", "clip-path: url(#clip)")
+  }
+
+  disableWheelZoom() {
+    this.svg.call(this.zoom).on("wheel.zoom", null);
   }
 
   draw() {
@@ -310,10 +309,18 @@ export class chart {
   drawAxisLabels(svg) {
     svg.append("g")
        .classed("xLabel", true)
-       .attr("transform", "translate("+(this.margin.left+(this.width)/2)+", "+(this.outerHeight   )+")")
+       .attr("transform", "translate("+(this.margin.left+(this.width)/2)+", "+(this.outerHeight - this.margin.bottom/3  )+")")
        .append("text").classed("x label", true)
        .attr("text-anchor", "middle")
        .text(this.xLabel);
+
+    svg.append("g")
+       .classed("xSublabel", true)
+       .attr("transform", "translate("+(this.margin.left+(this.width)/2)+", "+(this.outerHeight - this.margin.bottom/8  )+")")
+       .append("text").classed("x label sublabel", true)
+       .attr("text-anchor", "middle")
+       .text(this.xSublabel);
+
     svg.append("g")
        .classed("yLabel", true)
        .attr("x", 0)
@@ -325,6 +332,18 @@ export class chart {
        .attr("transform-origin", "center center")
        .attr("transform", "rotate(-90)")
        .text(this.yLabel);
+
+    svg.append("g")
+       .classed("ySublabel", true)
+       .attr("x", 0)
+       .attr("transform", "translate( 6 , "+(this.margin.top+(this.height)/2)+")")
+       .append("text")
+       .classed("y label sublabel", true)
+       .attr("text-anchor", "middle")
+       .attr("dy", ".75em")
+       .attr("transform-origin", "center center")
+       .attr("transform", "rotate(-90)")
+       .text(this.ySublabel);
 
   }
 
@@ -433,13 +452,15 @@ export class chart {
         });
   }
 
-  setWidthHeight(svg, nOuterWidth, nOuterHeight) {
+  setWidthHeight(nOuterWidth, nOuterHeight) {
     this.outerWidth = Math.max(200, nOuterWidth);
     this.outerHeight = Math.max(100, nOuterHeight);
     this.height = this.outerHeight - this.margin.top - this.margin.bottom;
     this.width = this.outerWidth - this.margin.left - this.margin.right;
-    svg.attr("width", this.outerWidth)
-      .attr("height", this.outerHeight);
+    this.svg.attr("width", this.outerWidth)
+            .attr("height", this.outerHeight);
+    this.xScale.range([0, this.width]);
+    this.yScale.range([this.height, 0]);
   }
     
 
@@ -490,30 +511,43 @@ export class chart {
     if (!arguments.length)
       return this.margin;
     this.margin = value;
+    this.width  = this.outerWidth - this.margin.left - this.margin.right;
+    this.height = this.outerHeight - this.margin.top - this.margin.bottom;
+    this.xScale.range([0, this.width]);
+    this.yScale.range([this.height, 0]);
+
+    this.svg
+      .attr("height", this.outerHeight)
+      .attr("width", this.outerWidth);
+    this.g.attr("transform", "translate(" + this.margin.left + "," + this.margin.top + ")");
     return this;
   }
   setXLabel(value) {
     if (!arguments.length)
       return this.xLabel;
     this.xLabel = value;
+    this.g.select('g.xLabel').select('text').text(this.xLabel);
     return this;
   }
   setYLabel(value) {
     if (!arguments.length)
       return this.yLabel;
     this.yLabel = value;
+    this.g.select('g.yLabel').select('text').text(this.yLabel);
     return this;
   }
   setXSublabel(value) {
     if (!arguments.length)
       return this.xSublabel;
     this.xSublabel = value;
+    this.g.select('g.xSublabel').select('text').text(this.xSublabel);
     return this;
   }
   setYSublabel(value) {
     if (!arguments.length)
       return this.ySublabel;
     this.ySublabel = value;
+    this.g.select('g.ySublabel').select('text').text(this.ySublabel);
     return this;
   }
   setMarkers(value) {
@@ -528,20 +562,41 @@ export class chart {
     this.segments.push(seismogram);
     let minMax = findMinMax(this.segments);
     this.yScale.domain(minMax); 
-console.log("TODO: Do something to draw new segment...");
     this.drawSegments(this.segments, this.g.select("g.allsegments"));
   }
+
   trim(timeWindow) {
-    this.segments = this.segments.filter(function(d) {
-      return d.start.getTime() > timeWindow.start.getTime();
-    });
-    let minMax = findMinMax(this.segments);
-    this.yScale.domain(minMax); 
-    this.drawSegments(this.segments, this.g.select("g.allsegments"));
-    console.log("TODO: trim seismograms outside window....");
+    if (this.segments) {
+      this.segments = this.segments.filter(function(d) {
+        return d.start.getTime() > timeWindow.start.getTime();
+      });
+      if (this.segments.length > 0) {
+        let minMax = findMinMax(this.segments);
+        this.yScale.domain(minMax); 
+        this.drawSegments(this.segments, this.g.select("g.allsegments"));
+      }
+    }
   }
 }
 
+let formatMillisecond = d3.utcFormat(".%L"),
+    formatSecond = d3.utcFormat(":%S"),
+    formatMinute = d3.utcFormat("%H:%M"),
+    formatHour = d3.utcFormat("%H %p"),
+    formatDay = d3.utcFormat("%a %d"),
+    formatWeek = d3.utcFormat("%b %d"),
+    formatMonth = d3.utcFormat("%B"),
+    formatYear = d3.utcFormat("%Y");
+
+let multiFormatHour = function(date) {
+  return (d3.utcSecond(date) < date ? formatMillisecond
+      : d3.utcMinute(date) < date ? formatSecond
+      : d3.utcHour(date) < date ? formatMinute
+      : d3.utcDay(date) < date ? formatHour
+      : d3.utcMonth(date) < date ? (d3.utcWeek(date) < date ? formatDay : formatWeek)
+      : d3.utcYear(date) < date ? formatMonth
+      : formatYear)(date);
+};
 
 /*
  * from http://stackoverflow.com/questions/105034/how-to-create-a-guid-uuid-in-javascript
