@@ -1,0 +1,23 @@
+div.myseisplot {
+  height: 100px;
+}
+
+path.seispath {
+  stroke: skyblue;
+  fill: none;
+  stroke-width: 1px;
+}
+
+
+
+path.orientZ {
+  stroke: seagreen;
+}
+
+path.orientN {
+  stroke: cornflowerblue;
+}
+
+path.orientE {
+  stroke: orange;
+}
