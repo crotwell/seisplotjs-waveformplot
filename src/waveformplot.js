@@ -58,8 +58,14 @@ export function createPlotsBySelector(selector) {
             if (error) {
                 console.log("error loading data: "+error);
             } else {
-                let seismogram = new chart(svgParent, segments, startDate, endDate);
-                seismogram.draw();
+                if (segments.length >0) {
+                  let s = segments[0];
+                  let seismogram = new chart(svgParent, s, startDate, endDate);
+                  for ( let i=1; i< segments.length; i++) {
+                    seismogram.append(segments[i]);
+                  }
+                  seismogram.draw();
+                }
             }
         });
   });
@@ -275,7 +281,6 @@ export class chart {
 
 
       let segmentG = drawG
-//        .append("g").attr("class", "segArray")
         .selectAll("g")
         .data(segments);
 
@@ -286,7 +291,9 @@ export class chart {
         .append("g")
           .attr("class", "segment")
         .append("path")
-          .attr("class", "seispath")
+          .attr("class", function(seg) { 
+              return "seispath "+seg.codes()+" orient"+seg.chanCode.charAt(2);
+          })
           .attr("style", "clip-path: url(#clip)")
           .attr("d", function(seg) { 
              return mythis.lineFunc(seg.y.map(function(d,i) {
@@ -557,9 +564,17 @@ export class chart {
     this.updateMarkers(value);
     return this;
   }
+
+  /** can append single seismogram segemtn or an array of segments. */
   append(seismogram) {
     let mythis = this;
-    this.segments.push(seismogram);
+    if (Array.isArray(seismogram)) {
+      for(let s of seismogram) {
+        this.segments.push(s);
+      }
+    } else {
+      this.segments.push(seismogram);
+    }
     let minMax = findMinMax(this.segments);
     this.yScale.domain(minMax); 
     this.drawSegments(this.segments, this.g.select("g.allsegments"));
