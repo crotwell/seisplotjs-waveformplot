@@ -208,6 +208,7 @@ export class chart {
     this.ySublabel = "";
     this.svgParent = inSvgParent;
     this.segments = inSegments;
+    this.markers = [];
     this.margin = {top: 20, right: 20, bottom: 30, left: 60};
 
     this.svg = inSvgParent.append("svg");
@@ -223,6 +224,7 @@ export class chart {
     this.xScale = d3.scaleUtc()
       .domain([plotStartDate, plotEndDate]);
     this.origXScale = this.xScale;
+    this.currZoomXScale = this.xScale;
     this.yScale = d3.scaleLinear();
 
     this.xAxis = d3.axisBottom(this.xScale).tickFormat(this.xScaleFormat);
@@ -261,7 +263,7 @@ export class chart {
     this.yScale.domain(minMax); 
 
     // create marker g
-    let markerLabelSvgG = this.g.append("g").classed("allmarkers", true)
+    let markerLabelSvgG = this.g.append("g").attr("class", "allmarkers")
         .attr("style", "clip-path: url(#clip)")
   }
 
@@ -273,6 +275,7 @@ export class chart {
     this.drawSegments(this.segments, this.g.select("g.allsegments"));
     this.drawAxis(this.g);
     this.drawAxisLabels(this.svg);
+    this.drawMarkers(this.markers, this.g.select("g.allmarkers"));
   }
 
   drawSegments(segments, svgG) {
@@ -357,6 +360,7 @@ export class chart {
   resetZoom() {
     let mythis = this;
     this.xScale = this.origXScale;
+    this.currZoomXScale = this.xScale;
     this.g.select(".segment").select("path")
           .attr("d", function(seg) {
              let lf = mythis.lineFunc;
@@ -381,6 +385,8 @@ export class chart {
 
   redrawWithXScale(xt) {
     let mythis = this;
+    this.currZoomScale = xt;
+console.log("redrawWithXScale: from xscale: "+this.xScale.domain()+"  to "+xt.domain());
     this.g.selectAll(".segment").select("path")
           .attr("d", function(seg, i) { 
              let lf = mythis.lineFunc;
@@ -397,17 +403,20 @@ export class chart {
     this.g.select(".axis--x").call(this.xAxis.scale(xt));
   }
 
-  updateMarkers(markers) {
+  drawMarkers(markers, markerG) {
     if ( ! markers) { markers = []; }
+console.log("updateMarkers "+markers.length);
     // marker overlay
-    let svgP = this.svgParent;
-    let svg = svgP.select("svg");
-    let svgG = svg.select("g");
     let chartThis = this;
 
-    let labelSvgG = svgG.select("g.allmarkers");
-    let labelSelection = labelSvgG.selectAll("g").data(this.markers);
+    let labelSelection = markerG.selectAll("g")
+.data(markers);
+//        .data(markers, function(d) {
+//              // key for data
+//              return d.name+"_"+d.time.getTime(); 
+//            });
     labelSelection.exit().remove();
+
     let textOffset = .85;
     let textAngle = 45;
     let radianTextAngle = textAngle*Math.PI/180;
@@ -417,45 +426,65 @@ export class chart {
         .attr("class", "marker")
            // translate so marker time is zero
         .attr("transform", function(marker) {
-          let textx = chartThis.xScale( Date.parse(marker.time));
-          return  "translate("+textx+","+0+")";});
-    let innerTextG = labelG
-      .append("g")
-        .attr("class", "markertext")
-        .attr("transform", function(marker) {
-    // shift up by textOffset percentage
-          let texty = chartThis.yScale.range()[0] - textOffset*(chartThis.yScale.range()[0]-chartThis.yScale.range()[1]);
-          return  "translate("+0+","+texty+") rotate("+textAngle+")";});
-    innerTextG.append("text")
-        .attr("dy", "-0.35em")
-        .text(function(marker) {return marker.name;})
-        .call(function(selection) {
-          selection.each(function(t){t.bbox = this.getBBox();});
-        }); 
-    // draw/insert flag dehind/before text
-    innerTextG.insert("polygon", "text")
-        .attr("points", function(marker) {
-          let bboxH = marker.bbox.height+5;
-          let bboxW = marker.bbox.width;
-          return "0,0 "
-            +(-1*bboxH*Math.tan(radianTextAngle))+",-"+bboxH+" "
-            +bboxW+",-"+bboxH+" "
-            +bboxW+",0";
-        })
-        .style("fill", "#F5F5F5A0");
-    labelG.append("path")
-        .classed("markerpath", true)
-        .style("fill", "none")
-        .style("stroke", "black")
-        .style("stroke-width", "1px")
-        .attr("d", function(marker) {
-          return d3.line()
-            .x(function(d) {
-              return 0; // g is translated so marker time is zero
-            }).y(function(d, i) {
-              return (i==0) ? 0 : chartThis.yScale.range()[0];
-            }).curve(d3.curveLinear)([ chartThis.yScale.domain()[0], chartThis.yScale.domain()[1] ] ); // call the d3 function created by line with data
-
+            let textx = chartThis.currZoomXScale( Date.parse(marker.time));
+            return  "translate("+textx+","+0+")";
+          })
+        .each(function(marker) {
+console.log("marker append each "+marker.name);
+let tmpG = d3.select(this).append("g").attr("class", "tmpG "+marker.name);
+     
+          let innerTextG = tmpG.insert("g")
+            .attr("class", "markertext")
+            .attr("transform", function(marker) {
+console.log("in g transform up for text "+marker.name);
+              // shift up by textOffset percentage
+              let maxY = chartThis.yScale.range()[0];
+              let deltaY = chartThis.yScale.range()[0]-chartThis.yScale.range()[1];
+              let texty = maxY - textOffset*(deltaY);
+              return  "translate("+0+","+texty+") rotate("+textAngle+")";});
+          innerTextG.append("text")
+              .attr("dy", "-0.35em")
+              .text(function(marker) {return marker.name;})
+              .call(function(selection) {
+                // this stores the BBox of the text in the bbox field for later use
+                selection.each(function(t){
+                    // set a default just in case
+                    t.bbox = {height: 15, width:20};
+                    try {
+                      t.bbox = this.getBBox();
+                    } catch(error) {
+                      console.log("exception running getBBox() ");
+                      console.log(error);
+                      // this happens if the text is not yet in the DOM, I think
+                      //  https://bugzilla.mozilla.org/show_bug.cgi?id=612118
+                    }
+                });
+              }); 
+          // draw/insert flag dehind/before text
+          innerTextG.insert("polygon", "text")
+              .attr("points", function(marker) {
+                let bboxH = marker.bbox.height+5;
+                let bboxW = marker.bbox.width;
+                return "0,0 "
+                  +(-1*bboxH*Math.tan(radianTextAngle))+",-"+bboxH+" "
+                  +bboxW+",-"+bboxH+" "
+                  +bboxW+",0";
+              })
+              .style("fill", "#F5F5F5A0");
+          tmpG.append("path")
+            .classed("markerpath", true)
+            .style("fill", "none")
+            .style("stroke", "black")
+            .style("stroke-width", "1px")
+            .attr("d", function(marker) {
+              return d3.line()
+                .x(function(d) {
+                  return 0; // g is translated so marker time is zero
+                }).y(function(d, i) {
+                  return (i==0) ? 0 : chartThis.yScale.range()[0];
+                }).curve(d3.curveLinear)([ chartThis.yScale.domain()[0], chartThis.yScale.domain()[1] ] ); // call the d3 function created by line with data
+    
+            });
         });
   }
 
@@ -557,11 +586,23 @@ export class chart {
     this.g.select('g.ySublabel').select('text').text(this.ySublabel);
     return this;
   }
-  setMarkers(value) {
-    if (! arguments.length) 
-      return this.markers;
-    this.markers = value;
-    this.updateMarkers(value);
+  clearMarkers() {
+    this.markers.length = 0; //set array length to zero deletes all 
+    this.drawMarkers(this.markers, this.g.select("g.allmarkers"));
+    return this;
+  }
+  getMargers() {
+    return this.markers;
+  }
+  appendMarkers(value) {
+    if (Array.isArray(value)) {
+      for( let m of value) {
+        this.markers.push(m);
+      }
+    } else {
+      this.markers.push(value);
+    }
+    this.drawMarkers(this.markers, this.g.select("g.allmarkers"));
     return this;
   }
 
@@ -578,6 +619,7 @@ export class chart {
     let minMax = findMinMax(this.segments);
     this.yScale.domain(minMax); 
     this.drawSegments(this.segments, this.g.select("g.allsegments"));
+    return this;
   }
 
   trim(timeWindow) {
