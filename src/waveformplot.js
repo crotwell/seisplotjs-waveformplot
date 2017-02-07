@@ -371,9 +371,9 @@ export class chart {
            });
     this.g.select("g.allmarkers").selectAll("g.marker")
         .attr("transform", function(marker) {
-          let textx = this.xScale( Date.parse(marker.time));
+          let textx = mythis.xScale( Date.parse(marker.time));
           return  "translate("+textx+","+0+")";});
-    this.g.select(".axis--x").call(this.xAxis.scale(this.xScale));
+    this.g.select(".axis--x").call(this.xAxis.scale(mythis.xScale));
   }
 
 
@@ -385,8 +385,7 @@ export class chart {
 
   redrawWithXScale(xt) {
     let mythis = this;
-    this.currZoomScale = xt;
-console.log("redrawWithXScale: from xscale: "+this.xScale.domain()+"  to "+xt.domain());
+    this.currZoomXScale = xt;
     this.g.selectAll(".segment").select("path")
           .attr("d", function(seg, i) { 
              let lf = mythis.lineFunc;
@@ -405,7 +404,6 @@ console.log("redrawWithXScale: from xscale: "+this.xScale.domain()+"  to "+xt.do
 
   drawMarkers(markers, markerG) {
     if ( ! markers) { markers = []; }
-console.log("updateMarkers "+markers.length);
     // marker overlay
     let chartThis = this;
 
@@ -423,20 +421,18 @@ console.log("updateMarkers "+markers.length);
 
     let labelG = labelSelection.enter()
         .append("g")
-        .attr("class", "marker")
+        .attr("class", function(m) { return "marker "+m.name;})
            // translate so marker time is zero
         .attr("transform", function(marker) {
             let textx = chartThis.currZoomXScale( Date.parse(marker.time));
             return  "translate("+textx+","+0+")";
           })
         .each(function(marker) {
-console.log("marker append each "+marker.name);
-let tmpG = d3.select(this).append("g").attr("class", "tmpG "+marker.name);
+          let drawG = d3.select(this);
      
-          let innerTextG = tmpG.insert("g")
+          let innerTextG = drawG.insert("g")
             .attr("class", "markertext")
             .attr("transform", function(marker) {
-console.log("in g transform up for text "+marker.name);
               // shift up by textOffset percentage
               let maxY = chartThis.yScale.range()[0];
               let deltaY = chartThis.yScale.range()[0]-chartThis.yScale.range()[1];
@@ -471,7 +467,7 @@ console.log("in g transform up for text "+marker.name);
                   +bboxW+",0";
               })
               .style("fill", "#F5F5F5A0");
-          tmpG.append("path")
+          drawG.append("path")
             .classed("markerpath", true)
             .style("fill", "none")
             .style("stroke", "black")
