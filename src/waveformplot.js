@@ -406,13 +406,11 @@ export class chart {
     if ( ! markers) { markers = []; }
     // marker overlay
     let chartThis = this;
-
-    let labelSelection = markerG.selectAll("g")
-.data(markers);
-//        .data(markers, function(d) {
-//              // key for data
-//              return d.name+"_"+d.time.getTime(); 
-//            });
+    let labelSelection = markerG.selectAll("g.marker")
+        .data(markers, function(d) {
+              // key for data
+              return d.name+"_"+d.time.getTime(); 
+            });
     labelSelection.exit().remove();
 
     let textOffset = .85;
@@ -430,7 +428,7 @@ export class chart {
         .each(function(marker) {
           let drawG = d3.select(this);
      
-          let innerTextG = drawG.insert("g")
+          let innerTextG = drawG.append("g")
             .attr("class", "markertext")
             .attr("transform", function(marker) {
               // shift up by textOffset percentage
