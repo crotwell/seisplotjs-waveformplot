@@ -210,6 +210,7 @@ export class chart {
     this.segments = inSegments;
     this.markers = [];
     this.margin = {top: 20, right: 20, bottom: 30, left: 60};
+    this.segmentDrawCompressedCutoff=10;//below this draw all points, above draw minmax
 
     this.svg = inSvgParent.append("svg");
 
@@ -308,7 +309,7 @@ export class chart {
     let secondsPerPixel = (domain[1].getTime()-domain[0].getTime())/1000 / (range[1]-range[0]);
     let samplesPerPixel = seg.sampleRate * secondsPerPixel;
     this.lineFunc.x(function(d) { return xScale(d.time); });
-    if (samplesPerPixel < 10) {
+    if (samplesPerPixel < this.segmentDrawCompressedCutoff) {
       return this.lineFunc(seg.y.map(function(d,i) {
         return {time: seg.timeOfSample(i), y: d };
       }));
@@ -644,7 +645,7 @@ export class chart {
   trim(timeWindow) {
     if (this.segments) {
       this.segments = this.segments.filter(function(d) {
-        return d.start.getTime() > timeWindow.start.getTime();
+        return d.end.getTime() > timeWindow.start.getTime();
       });
       if (this.segments.length > 0) {
         let minMax = findMinMax(this.segments);
