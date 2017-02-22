@@ -282,7 +282,6 @@ export class chart {
     let drawG = svgG;
     let mythis = this;
 
-
       let segmentG = drawG
         .selectAll("g")
         .data(segments);
@@ -299,10 +298,44 @@ export class chart {
           })
           .attr("style", "clip-path: url(#clip)")
           .attr("d", function(seg) { 
-             return mythis.lineFunc(seg.y.map(function(d,i) {
-               return {time: seg.timeOfSample(i), y: d };
-             }));
+             return mythis.segmentDrawLine(seg, mythis.xScale);
            });
+  }
+
+  segmentDrawLine(seg, xScale) {
+    let domain = xScale.domain(); // time so milliseconds
+    let range = xScale.range(); // pixels
+    let secondsPerPixel = (domain[1].getTime()-domain[0].getTime())/1000 / (range[1]-range[0]);
+    let samplesPerPixel = seg.sampleRate * secondsPerPixel;
+    this.lineFunc.x(function(d) { return xScale(d.time); });
+    if (samplesPerPixel < 10) {
+      return this.lineFunc(seg.y.map(function(d,i) {
+        return {time: seg.timeOfSample(i), y: d };
+      }));
+    } else {
+      // lots of points per pixel so use high/low lines
+      if ( ! seg.highlow || seg.highlow.xScaleRange[1] != xScale.range()[1]) {
+        let highlow = []
+        let numHL = 2*Math.ceil(seg.y.length/samplesPerPixel);
+        for(let i=0; i<numHL; i++) {
+          let snippet = seg.y.slice(i * samplesPerPixel,
+                                    (i+1) * samplesPerPixel);
+          highlow[2*i] = snippet.reduce(function(acc, val) {
+            return Math.min(acc, val);
+          }, snippet[0]);
+          highlow[2*i+1] = snippet.reduce(function(acc, val) {
+            return Math.max(acc, val);
+          }, snippet[0]);
+        }
+        seg.highlow = {
+            xScaleRange: xScale.range(),
+            highlowArray: highlow
+        };
+      }
+      return this.lineFunc(seg.highlow.highlowArray.map(function(d,i) {
+        return {time: new Date(seg.start.getTime()+1000*((Math.floor(i/2)+.5)*secondsPerPixel)), y: d };
+      }));
+    }
   }
 
   drawAxis(svgG) { 
@@ -363,11 +396,7 @@ export class chart {
     this.currZoomXScale = this.xScale;
     this.g.select(".segment").select("path")
           .attr("d", function(seg) {
-             let lf = mythis.lineFunc;
-             lf.x(function(d) { return mythis.xScale(d.time); });
-             return lf(seg.y.map(function(d,i) {
-               return {time: seg.timeOfSample(i), y: d };
-             }));
+             mythis.segmentDrawLine(seg, mythis.xScale);
            });
     this.g.select("g.allmarkers").selectAll("g.marker")
         .attr("transform", function(marker) {
@@ -388,11 +417,7 @@ export class chart {
     this.currZoomXScale = xt;
     this.g.selectAll(".segment").select("path")
           .attr("d", function(seg, i) { 
-             let lf = mythis.lineFunc;
-             lf.x(function(d) { return xt(d.time); });
-             return lf(seg.y.map(function(d,i) {
-               return {time: seg.timeOfSample(i), y: d };
-             }));
+             return mythis.segmentDrawLine(seg, xt);
            });
     this.g.select("g.allmarkers").selectAll("g.marker")
         .attr("transform", function(marker) {
