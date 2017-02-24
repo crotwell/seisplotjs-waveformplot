@@ -490,7 +490,7 @@ export class chart {
                   +bboxW+",-"+bboxH+" "
                   +bboxW+",0";
               })
-              .style("fill", "#F5F5F5A0");
+              .style("fill", "rgba(220,220,220,.4)");
           drawG.append("path")
             .classed("markerpath", true)
             .style("fill", "none")
