@@ -295,7 +295,7 @@ export class chart {
           .attr("class", "segment")
         .append("path")
           .attr("class", function(seg) { 
-              return "seispath "+seg.codes()+" orient"+seg.chanCode.charAt(2);
+              return "seispath "+seg.codes()+" orient"+seg.chanCode().charAt(2);
           })
           .attr("style", "clip-path: url(#clip)")
           .attr("d", function(seg) { 
@@ -307,34 +307,41 @@ export class chart {
     let domain = xScale.domain(); // time so milliseconds
     let range = xScale.range(); // pixels
     let secondsPerPixel = (domain[1].getTime()-domain[0].getTime())/1000 / (range[1]-range[0]);
-    let samplesPerPixel = seg.sampleRate * secondsPerPixel;
+    let samplesPerPixel = seg.sampleRate() * secondsPerPixel;
     this.lineFunc.x(function(d) { return xScale(d.time); });
     if (samplesPerPixel < this.segmentDrawCompressedCutoff) {
-      return this.lineFunc(seg.y.map(function(d,i) {
+      return this.lineFunc(seg.y().map(function(d,i) {
         return {time: seg.timeOfSample(i), y: d };
       }));
     } else {
       // lots of points per pixel so use high/low lines
-      if ( ! seg.highlow || seg.highlow.xScaleRange[1] != xScale.range()[1]) {
+      if ( ! seg.highlow 
+           || seg.highlow.secondsPerPixel != secondsPerPixel 
+           || seg.highlow.xScaleDomain[1] != xScale.domain()[1]) {
         let highlow = []
-        let numHL = 2*Math.ceil(seg.y.length/samplesPerPixel);
+        let numHL = 2*Math.ceil(seg.y().length/samplesPerPixel);
         for(let i=0; i<numHL; i++) {
-          let snippet = seg.y.slice(i * samplesPerPixel,
+          let snippet = seg.y().slice(i * samplesPerPixel,
                                     (i+1) * samplesPerPixel);
+          if (snippet.length != 0) {
           highlow[2*i] = snippet.reduce(function(acc, val) {
             return Math.min(acc, val);
           }, snippet[0]);
           highlow[2*i+1] = snippet.reduce(function(acc, val) {
             return Math.max(acc, val);
           }, snippet[0]);
+          }
         }
         seg.highlow = {
+            xScaleDomain: xScale.domain(),
             xScaleRange: xScale.range(),
+            secondsPerPixel: secondsPerPixel,
+            samplesPerPixel: samplesPerPixel,
             highlowArray: highlow
         };
       }
       return this.lineFunc(seg.highlow.highlowArray.map(function(d,i) {
-        return {time: new Date(seg.start.getTime()+1000*((Math.floor(i/2)+.5)*secondsPerPixel)), y: d };
+        return {time: new Date(seg.start().getTime()+1000*((Math.floor(i/2)+.5)*secondsPerPixel)), y: d };
       }));
     }
   }
@@ -445,7 +452,7 @@ export class chart {
 
     let labelG = labelSelection.enter()
         .append("g")
-        .attr("class", function(m) { return "marker "+m.name;})
+        .attr("class", function(m) { return "marker "+m.name+" "+m.markertype;})
            // translate so marker time is zero
         .attr("transform", function(marker) {
             let textx = chartThis.currZoomXScale( Date.parse(marker.time));
@@ -489,8 +496,9 @@ export class chart {
                   +(-1*bboxH*Math.tan(radianTextAngle))+",-"+bboxH+" "
                   +bboxW+",-"+bboxH+" "
                   +bboxW+",0";
-              })
-              .style("fill", "rgba(220,220,220,.4)");
+              });
+// let style be in css?
+//              .style("fill", "rgba(220,220,220,.4)");
           drawG.append("path")
             .classed("markerpath", true)
             .style("fill", "none")
