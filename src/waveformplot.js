@@ -469,6 +469,9 @@ export class chart {
               let deltaY = chartThis.yScale.range()[0]-chartThis.yScale.range()[1];
               let texty = maxY - textOffset*(deltaY);
               return  "translate("+0+","+texty+") rotate("+textAngle+")";});
+          innerTextG.append("title").text(function(marker) {
+              return marker.name+" "+marker.time.toISOString();
+          });
           innerTextG.append("text")
               .attr("dy", "-0.35em")
               .text(function(marker) {return marker.name;})
