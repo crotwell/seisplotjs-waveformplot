@@ -56,7 +56,7 @@ export function createPlotsBySelector(selector) {
     loadParseSplitUrl(url,
         function(error, segments) {
             if (error) {
-                console.log("error loading data: "+error);
+                console.assert(false, error);
             } else {
                 if (segments.length >0) {
                   let s = segments[0];
@@ -167,11 +167,11 @@ export function findStartEnd(data, accumulator) {
        if ( ! accumulator) {
          out = {};
        }
-       if ( ! accumulator || data.start < accumulator.start) {
-         out.start = data.start;
+       if ( ! accumulator || data.start() < accumulator.start) {
+         out.start = data.start();
        }
-       if ( ! accumulator || accumulator.end < data.end ) {
-         out.end = data.end;
+       if ( ! accumulator || accumulator.end < data.end() ) {
+         out.end = data.end();
        }
        accumulator = out;
     }
@@ -206,11 +206,14 @@ export class chart {
     this.xSublabel = "";
     this.yLabel = "Amplitude";
     this.ySublabel = "";
+    this.ySublabelTrans = 10;
     this.svgParent = inSvgParent;
     this.segments = inSegments;
     this.markers = [];
-    this.margin = {top: 20, right: 20, bottom: 30, left: 60};
+    this.margin = {top: 20, right: 20, bottom: 42, left: 65};
     this.segmentDrawCompressedCutoff=10;//below this draw all points, above draw minmax
+    this.maxZoomPixelPerSample = 20; // no zoom in past point of sample
+                                         // separated by pixels
 
     this.svg = inSvgParent.append("svg");
 
@@ -241,8 +244,21 @@ export class chart {
       .x(function(d, i) {return mythis.xScale(d.time); })
       .y(function(d, i) {return mythis.yScale(d.y); });
 
+    let maxZoom = 8;
+    if (inSegments && inSegments.length>0) {
+      let maxSps = 1;
+      maxSps = inSegments.reduce(function(accum, seg, i) {
+        return Math.max(accum, seg.sampleRate());
+      }, maxSps);
+      let secondsPerPixel = this.calcSecondsPerPixel( mythis.xScale);
+      let samplesPerPixel = maxSps * secondsPerPixel;
+      let zoomLevelFactor = samplesPerPixel*this.maxZoomPixelPerSample;
+      maxZoom = Math.max(maxZoom, 
+                         Math.pow(2, Math.ceil(Math.log(zoomLevelFactor)/Math.log(2))));
+    }
+
     this.zoom = d3.zoom()
-      .scaleExtent([1/2, 32])
+      .scaleExtent([1/4, maxZoom ] )
       .translateExtent([[0, 0], [this.width, this.height]])
       .extent([[0, 0], [this.width, this.height]])
       .on("zoom", function(d,i) {
@@ -265,7 +281,7 @@ export class chart {
 
     // create marker g
     let markerLabelSvgG = this.g.append("g").attr("class", "allmarkers")
-        .attr("style", "clip-path: url(#clip)")
+        .attr("style", "clip-path: url(#clip)");
   }
 
   disableWheelZoom() {
@@ -303,10 +319,14 @@ export class chart {
            });
   }
 
-  segmentDrawLine(seg, xScale) {
+  calcSecondsPerPixel(xScale) {
     let domain = xScale.domain(); // time so milliseconds
     let range = xScale.range(); // pixels
-    let secondsPerPixel = (domain[1].getTime()-domain[0].getTime())/1000 / (range[1]-range[0]);
+    return (domain[1].getTime()-domain[0].getTime())/1000 / (range[1]-range[0]);
+  }
+
+  segmentDrawLine(seg, xScale) {
+    let secondsPerPixel = this.calcSecondsPerPixel(xScale);
     let samplesPerPixel = seg.sampleRate() * secondsPerPixel;
     this.lineFunc.x(function(d) { return xScale(d.time); });
     if (samplesPerPixel < this.segmentDrawCompressedCutoff) {
@@ -318,7 +338,7 @@ export class chart {
       if ( ! seg.highlow 
            || seg.highlow.secondsPerPixel != secondsPerPixel 
            || seg.highlow.xScaleDomain[1] != xScale.domain()[1]) {
-        let highlow = []
+        let highlow = [];
         let numHL = 2*Math.ceil(seg.y().length/samplesPerPixel);
         for(let i=0; i<numHL; i++) {
           let snippet = seg.y().slice(i * samplesPerPixel,
@@ -367,7 +387,7 @@ export class chart {
 
     svg.append("g")
        .classed("xSublabel", true)
-       .attr("transform", "translate("+(this.margin.left+(this.width)/2)+", "+(this.outerHeight - this.margin.bottom/8  )+")")
+       .attr("transform", "translate("+(this.margin.left+(this.width)/2)+", "+(this.outerHeight  )+")")
        .append("text").classed("x label sublabel", true)
        .attr("text-anchor", "middle")
        .text(this.xSublabel);
@@ -387,7 +407,7 @@ export class chart {
     svg.append("g")
        .classed("ySublabel", true)
        .attr("x", 0)
-       .attr("transform", "translate( 6 , "+(this.margin.top+(this.height)/2)+")")
+       .attr("transform", "translate( "+this.ySublabelTrans+" , "+(this.margin.top+(this.height)/2)+")")
        .append("text")
        .classed("y label sublabel", true)
        .attr("text-anchor", "middle")
@@ -408,7 +428,7 @@ export class chart {
            });
     this.g.select("g.allmarkers").selectAll("g.marker")
         .attr("transform", function(marker) {
-          let textx = mythis.xScale( Date.parse(marker.time));
+          let textx = mythis.xScale( marker.time);
           return  "translate("+textx+","+0+")";});
     this.g.select(".axis--x").call(this.xAxis.scale(mythis.xScale));
   }
@@ -429,7 +449,7 @@ export class chart {
            });
     this.g.select("g.allmarkers").selectAll("g.marker")
         .attr("transform", function(marker) {
-          let textx = xt( Date.parse(marker.time));
+          let textx = xt( marker.time);
           return  "translate("+textx+","+0+")";});
 
     this.g.select(".axis--x").call(this.xAxis.scale(xt));
@@ -455,7 +475,7 @@ export class chart {
         .attr("class", function(m) { return "marker "+m.name+" "+m.markertype;})
            // translate so marker time is zero
         .attr("transform", function(marker) {
-            let textx = chartThis.currZoomXScale( Date.parse(marker.time));
+            let textx = chartThis.currZoomXScale( marker.time);
             return  "translate("+textx+","+0+")";
           })
         .each(function(marker) {
@@ -483,8 +503,7 @@ export class chart {
                     try {
                       t.bbox = this.getBBox();
                     } catch(error) {
-                      console.log("exception running getBBox() ");
-                      console.log(error);
+                      console.assert(false, error);
                       // this happens if the text is not yet in the DOM, I think
                       //  https://bugzilla.mozilla.org/show_bug.cgi?id=612118
                     }
@@ -547,7 +566,7 @@ export class chart {
   }
 
   setPlotStart(value) {
-    return setPlotStartEnd(value, this.xScale.domain()[1]);
+    return this.setPlotStartEnd(value, this.xScale.domain()[1]);
   }
   setPlotEnd(value) {
     return this.setPlotStartEnd(this.xScale.domain()[0], value);
@@ -656,7 +675,7 @@ export class chart {
   trim(timeWindow) {
     if (this.segments) {
       this.segments = this.segments.filter(function(d) {
-        return d.end.getTime() > timeWindow.start.getTime();
+        return d.end().getTime() > timeWindow.start.getTime();
       });
       if (this.segments.length > 0) {
         let minMax = findMinMax(this.segments);
