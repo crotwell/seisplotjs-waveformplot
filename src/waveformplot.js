@@ -7,6 +7,7 @@
 
 import * as d3 from 'd3';
 import * as miniseed from 'seisplotjs-miniseed';
+import * as dataselect from 'seisplotjs-fdsndataselect';
 
 /* re-export */
 export { miniseed , d3 };
@@ -48,7 +49,7 @@ export function createPlotsBySelector(selector) {
       protocol = 'https:';
     }
 
-    let seisDates = calcStartEndDates(start, end, duration, clockOffset);
+    let seisDates = dataselect.calcStartEndDates(start, end, duration, clockOffset);
     let startDate = seisDates.start;
     let endDate = seisDates.end;
 
@@ -72,7 +73,7 @@ export function createPlotsBySelector(selector) {
 }
 
 export function calcClockOffset(serverTime) {
-  return new Date().getTime() - serverTime.getTime();
+  return dataselect.calcClockOffset(serverTime);
 }
 
 /** 
@@ -85,36 +86,20 @@ clockOffset is the milliseconds that should be subtracted from the local time
  default is zero.
 */
 export function calcStartEndDates(start, end, duration, clockOffset) {
-  let startDate;
-  let endDate;
-  if (clockOffset === undefined) {
-    clockOffset = 0;
-  }
-  if (start && end) {
-    startDate = new Date(start);
-    endDate = new Date(end);
-  } else if (start && duration) {
-    startDate = new Date(start);
-    endDate = new Date(startDate.getTime()+parseFloat(duration)*1000);
-  } else if (end && duration) {
-    endDate = new Date(end);
-    startDate = new Date(endDate.getTime()-parseFloat(duration)*1000);
-  } else if (duration) {
-    endDate = new Date(new Date().getTime()-clockOffset);
-    startDate = new Date(endDate.getTime()-parseFloat(duration)*1000);
-  } else {
-    throw "need some combination of start, end and duration";
-  }
-  return { "start": startDate, "end": endDate };
+  return dataselect.calcStartEndDates(start, end, duration, clockOffset);
 }
 
 export function formRequestUrl(protocol, host, net, sta, loc, chan, startDate, endDate) {
-  let isoStart = startDate.toISOString();
-  isoStart = isoStart.substring(0, isoStart.lastIndexOf('.'));
-  let isoEnd = endDate.toISOString();
-  isoEnd = isoEnd.substring(0, isoEnd.lastIndexOf('.'));
-  let url = url=protocol+"//"+host+"/fdsnws/dataselect/1/query?net="+escape(net)+"&sta="+escape(sta)+"&loc="+escape(loc)+"&cha="+escape(chan)+"&start="+isoStart+"&end="+isoEnd;
-  return url;
+  let dsQuery = new dataselect.Query()
+      .protocol(protocol)
+      .host(host)
+      .networkCode(net)
+      .stationCode(sta)
+      .locationCode(loc)
+      .channelCode(chan)
+      .startTime(startDate)
+      .endTime(endDate);
+  return dsQuery.formURL();
 }
 
 export function loadParseSplit(protocol, host, net, sta, loc, chan, startDate, endDate, callback) {
@@ -641,7 +626,7 @@ export class chart {
     this.drawMarkers(this.markers, this.g.select("g.allmarkers"));
     return this;
   }
-  getMargers() {
+  getMarkers() {
     return this.markers;
   }
   appendMarkers(value) {
