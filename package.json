@@ -1,18 +1,18 @@
 {
   "name": "seisplotjs-waveformplot",
-  "version": "1.2.0-SNAPSHOT",
+  "version": "1.2.0",
   "description": "Plotting seismic data in miniseed format using d3.",
   "main": "./lib/waveformplot.js",
   "dependencies": {
-    "d3": "^4.7.1",
-    "seisplotjs-miniseed": ">= 1.0.1",
-    "seisplotjs-fdsndataselect": ">= 0.0.1"
+    "d3": "^4.9.1",
+    "seisplotjs-miniseed": ">= 1.1.0",
+    "seisplotjs-fdsndataselect": ">= 1.0.0"
   },
   "scripts": {
     "lint": "eslint 'src/*.js'",
     "test": "echo \"Error: no test specified\" && exit 1",
     "compile": "babel --presets es2015 -d lib/ src/",
-    "standalone": "browserify src/waveformplot.js --standalone seisplotjs_waveformplot -o seisplotjs_waveformplot_12s_standalone.js -t [ babelify --presets [ es2015 ] ]",
+    "standalone": "browserify src/waveformplot.js --standalone seisplotjs_waveformplot -o seisplotjs_waveformplot_120_standalone.js -t [ babelify --presets [ es2015 ] ]",
     "prepublish": "npm run compile"
   },
   "repository": {
