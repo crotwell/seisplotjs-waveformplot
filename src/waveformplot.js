@@ -185,6 +185,7 @@ export function findMinMax(data, minMaxAccumulator) {
   */
 export class chart {
   constructor(inSvgParent, inSegments, plotStartDate, plotEndDate) {
+    if (inSvgParent == null) {throw new Error("inSvgParent cannot be null");}
     this.xScaleFormat = multiFormatHour;
     this.yScaleFormat = "3e";
     this.xLabel = "Time";
@@ -220,19 +221,25 @@ export class chart {
     this.yAxis = d3.axisLeft(this.yScale).ticks(8, this.yScaleFormat);
 
     //sets height and width and things that depend on those
-    this.setWidthHeight(parseInt(inSvgParent.style("width")), 
-                        parseInt(inSvgParent.style("height")));
-
+    try {
+    let inWidth = inSvgParent.style("width");
+    let inHeight = inSvgParent.style("height");
+    this.setWidthHeight( inWidth ? parseInt(inWidth) : 100, 
+                         inHeight ? parseInt(inHeight) : 100);
+    } catch(e) {
+console.log("unable to find width/height style for inSvgParent", e);
+      this.setWidthHeight(200, 100);
+    }
     let mythis = this;
     this.lineFunc = d3.line()
       .curve(d3.curveLinear)
-      .x(function(d, i) {return mythis.xScale(d.time); })
-      .y(function(d, i) {return mythis.yScale(d.y); });
+      .x(function(d) {return mythis.xScale(d.time); })
+      .y(function(d) {return mythis.yScale(d.y); });
 
     let maxZoom = 8;
     if (inSegments && inSegments.length>0) {
       let maxSps = 1;
-      maxSps = inSegments.reduce(function(accum, seg, i) {
+      maxSps = inSegments.reduce(function(accum, seg) {
         return Math.max(accum, seg.sampleRate());
       }, maxSps);
       let secondsPerPixel = this.calcSecondsPerPixel( mythis.xScale);
@@ -246,7 +253,7 @@ export class chart {
       .scaleExtent([1/4, maxZoom ] )
       .translateExtent([[0, 0], [this.width, this.height]])
       .extent([[0, 0], [this.width, this.height]])
-      .on("zoom", function(d,i) {
+      .on("zoom", function(d) {
           mythis.zoomed(mythis);
         });
 
@@ -265,7 +272,7 @@ export class chart {
     this.yScale.domain(minMax); 
 
     // create marker g
-    let markerLabelSvgG = this.g.append("g").attr("class", "allmarkers")
+    this.g.append("g").attr("class", "allmarkers")
         .attr("style", "clip-path: url(#clip)");
   }
 
@@ -429,7 +436,7 @@ export class chart {
     let mythis = this;
     this.currZoomXScale = xt;
     this.g.selectAll(".segment").select("path")
-          .attr("d", function(seg, i) { 
+          .attr("d", function(seg) { 
              return mythis.segmentDrawLine(seg, xt);
            });
     this.g.select("g.allmarkers").selectAll("g.marker")
@@ -455,7 +462,7 @@ export class chart {
     let textAngle = 45;
     let radianTextAngle = textAngle*Math.PI/180;
 
-    let labelG = labelSelection.enter()
+    labelSelection.enter()
         .append("g")
         .attr("class", function(m) { return "marker "+m.name+" "+m.markertype;})
            // translate so marker time is zero
@@ -643,7 +650,6 @@ export class chart {
 
   /** can append single seismogram segemtn or an array of segments. */
   append(seismogram) {
-    let mythis = this;
     if (Array.isArray(seismogram)) {
       for(let s of seismogram) {
         this.segments.push(s);
