@@ -90,7 +90,7 @@ export function calcStartEndDates(start, end, duration, clockOffset) {
 }
 
 export function formRequestUrl(protocol, host, net, sta, loc, chan, startDate, endDate) {
-  let dsQuery = new dataselect.Query()
+  let dsQuery = new dataselect.DataSelectQuery()
       .protocol(protocol)
       .host(host)
       .networkCode(net)
