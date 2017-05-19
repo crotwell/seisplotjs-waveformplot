@@ -188,6 +188,7 @@ export class chart {
     if (inSvgParent == null) {throw new Error("inSvgParent cannot be null");}
     this.xScaleFormat = multiFormatHour;
     this.yScaleFormat = "3e";
+    this.title = "";
     this.xLabel = "Time";
     this.xSublabel = "";
     this.yLabel = "Amplitude";
@@ -227,7 +228,6 @@ export class chart {
     this.setWidthHeight( inWidth ? parseInt(inWidth) : 100, 
                          inHeight ? parseInt(inHeight) : 100);
     } catch(e) {
-console.log("unable to find width/height style for inSvgParent", e);
       this.setWidthHeight(200, 100);
     }
     let mythis = this;
@@ -370,44 +370,11 @@ console.log("unable to find width/height style for inSvgParent", e);
   }
 
   drawAxisLabels(svg) {
-    svg.append("g")
-       .classed("xLabel", true)
-       .attr("transform", "translate("+(this.margin.left+(this.width)/2)+", "+(this.outerHeight - this.margin.bottom/3  )+")")
-       .append("text").classed("x label", true)
-       .attr("text-anchor", "middle")
-       .text(this.xLabel);
-
-    svg.append("g")
-       .classed("xSublabel", true)
-       .attr("transform", "translate("+(this.margin.left+(this.width)/2)+", "+(this.outerHeight  )+")")
-       .append("text").classed("x label sublabel", true)
-       .attr("text-anchor", "middle")
-       .text(this.xSublabel);
-
-    svg.append("g")
-       .classed("yLabel", true)
-       .attr("x", 0)
-       .attr("transform", "translate(0, "+(this.margin.top+(this.height)/2)+")")
-       .append("text")
-       .classed("y label", true)
-       .attr("text-anchor", "middle")
-       .attr("dy", ".75em")
-       .attr("transform-origin", "center center")
-       .attr("transform", "rotate(-90)")
-       .text(this.yLabel);
-
-    svg.append("g")
-       .classed("ySublabel", true)
-       .attr("x", 0)
-       .attr("transform", "translate( "+this.ySublabelTrans+" , "+(this.margin.top+(this.height)/2)+")")
-       .append("text")
-       .classed("y label sublabel", true)
-       .attr("text-anchor", "middle")
-       .attr("dy", ".75em")
-       .attr("transform-origin", "center center")
-       .attr("transform", "rotate(-90)")
-       .text(this.ySublabel);
-
+    this.setTitle(this.title);
+    this.setXLabel(this.xLabel);
+    this.setXSublabel(this.xSublabel);
+    this.setYLabel(this.yLabel);
+    this.setYSublabel(this.ySublabel);
   }
 
   resetZoom() {
@@ -591,32 +558,80 @@ console.log("unable to find width/height style for inSvgParent", e);
     this.g.attr("transform", "translate(" + this.margin.left + "," + this.margin.top + ")");
     return this;
   }
+  setTitle(value) {
+    if (!arguments.length)
+      return this.title;
+    this.title = value;
+    this.svg.selectAll("g.title").remove();
+    this.svg.append("g")
+       .classed("title", true)
+       .attr("transform", "translate("+(this.margin.left+(this.width)/2)+", "+( this.margin.bottom/3  )+")")
+       .append("text").classed("title label", true)
+       .attr("text-anchor", "middle")
+       .text(this.title);
+    return this;
+  }
   setXLabel(value) {
     if (!arguments.length)
       return this.xLabel;
     this.xLabel = value;
-    this.g.select('g.xLabel').select('text').text(this.xLabel);
+    this.svg.selectAll("g.xLabel").remove();
+    this.svg.append("g")
+       .classed("xLabel", true)
+       .attr("transform", "translate("+(this.margin.left+(this.width)/2)+", "+(this.outerHeight - this.margin.bottom/3  )+")")
+       .append("text").classed("x label", true)
+       .attr("text-anchor", "middle")
+       .text(this.xLabel);
     return this;
   }
   setYLabel(value) {
     if (!arguments.length)
       return this.yLabel;
     this.yLabel = value;
-    this.g.select('g.yLabel').select('text').text(this.yLabel);
+    this.g.selectAll('g.yLabel').remove();
+    this.svg.append("g")
+       .classed("yLabel", true)
+       .attr("x", 0)
+       .attr("transform", "translate(0, "+(this.margin.top+(this.height)/2)+")")
+       .append("text")
+       .classed("y label", true)
+       .attr("text-anchor", "middle")
+       .attr("dy", ".75em")
+       .attr("transform-origin", "center center")
+       .attr("transform", "rotate(-90)")
+       .text(this.yLabel);
     return this;
   }
   setXSublabel(value) {
     if (!arguments.length)
       return this.xSublabel;
     this.xSublabel = value;
-    this.g.select('g.xSublabel').select('text').text(this.xSublabel);
+    this.g.selectAll('g.xSublabel').remove();
+    this.svg.append("g")
+       .classed("xSublabel", true)
+       .attr("transform", "translate("+(this.margin.left+(this.width)/2)+", "+(this.outerHeight  )+")")
+       .append("text").classed("x label sublabel", true)
+       .attr("text-anchor", "middle")
+       .text(this.xSublabel);
     return this;
   }
   setYSublabel(value) {
     if (!arguments.length)
       return this.ySublabel;
     this.ySublabel = value;
-    this.g.select('g.ySublabel').select('text').text(this.ySublabel);
+    this.g.selectAll('g.ySublabel').remove();
+
+    this.svg.append("g")
+       .classed("ySublabel", true)
+       .attr("x", 0)
+       .attr("transform", "translate( "+this.ySublabelTrans+" , "+(this.margin.top+(this.height)/2)+")")
+       .append("text")
+       .classed("y label sublabel", true)
+       .attr("text-anchor", "middle")
+       .attr("dy", ".75em")
+       .attr("transform-origin", "center center")
+       .attr("transform", "rotate(-90)")
+       .text(this.ySublabel);
     return this;
   }
   clearMarkers() {
