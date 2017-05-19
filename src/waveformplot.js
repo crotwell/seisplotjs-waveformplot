@@ -413,16 +413,7 @@ console.log("unable to find width/height style for inSvgParent", e);
   resetZoom() {
     let mythis = this;
     this.xScale = this.origXScale;
-    this.currZoomXScale = this.xScale;
-    this.g.select(".segment").select("path")
-          .attr("d", function(seg) {
-             mythis.segmentDrawLine(seg, mythis.xScale);
-           });
-    this.g.select("g.allmarkers").selectAll("g.marker")
-        .attr("transform", function(marker) {
-          let textx = mythis.xScale( marker.time);
-          return  "translate("+textx+","+0+")";});
-    this.g.select(".axis--x").call(this.xAxis.scale(mythis.xScale));
+    mythis.redrawWithXScale(this.xScale);
   }
 
 
