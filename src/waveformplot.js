@@ -217,6 +217,7 @@ export class chart {
     this.origXScale = this.xScale;
     this.currZoomXScale = this.xScale;
     this.yScale = d3.scaleLinear();
+    this.scaleChangeListeners = [];
 
     this.xAxis = d3.axisBottom(this.xScale).tickFormat(this.xScaleFormat);
     this.yAxis = d3.axisLeft(this.yScale).ticks(8, this.yScaleFormat);
@@ -403,6 +404,7 @@ export class chart {
           return  "translate("+textx+","+0+")";});
 
     this.g.select(".axis--x").call(this.xAxis.scale(xt));
+    this.scaleChangeListeners.forEach(l => l.notifyScaleChange(xt));
   }
 
   drawMarkers(markers, markerG) {
