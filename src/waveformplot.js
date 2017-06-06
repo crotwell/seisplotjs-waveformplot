@@ -370,6 +370,19 @@ export class chart {
         .call(this.yAxis);
   }
 
+  rescaleYAxis() {
+    let delay = 500;
+    let myThis = this;
+    if (this.throttleRescale) {
+      window.clearTimeout(this.throttleRescale);
+    }
+    this.throttleRescale = window.setTimeout(
+      function(){
+        myThis.g.select(".axis--y").transition().duration(delay/2).call(myThis.yAxis);
+        myThis.throttleRescale = null;
+      }, delay);
+  }
+
   drawAxisLabels(svg) {
     this.setTitle(this.title);
     this.setXLabel(this.xLabel);
@@ -590,7 +603,7 @@ export class chart {
     if (!arguments.length)
       return this.yLabel;
     this.yLabel = value;
-    this.g.selectAll('g.yLabel').remove();
+    this.svg.selectAll('g.yLabel').remove();
     this.svg.append("g")
        .classed("yLabel", true)
        .attr("x", 0)
@@ -608,7 +621,7 @@ export class chart {
     if (!arguments.length)
       return this.xSublabel;
     this.xSublabel = value;
-    this.g.selectAll('g.xSublabel').remove();
+    this.svg.selectAll('g.xSublabel').remove();
     this.svg.append("g")
        .classed("xSublabel", true)
        .attr("transform", "translate("+(this.margin.left+(this.width)/2)+", "+(this.outerHeight  )+")")
@@ -621,7 +634,7 @@ export class chart {
     if (!arguments.length)
       return this.ySublabel;
     this.ySublabel = value;
-    this.g.selectAll('g.ySublabel').remove();
+    this.svg.selectAll('g.ySublabel').remove();
 
     this.svg.append("g")
        .classed("ySublabel", true)
@@ -656,7 +669,7 @@ export class chart {
     return this;
   }
 
-  /** can append single seismogram segemtn or an array of segments. */
+  /** can append single seismogram segment or an array of segments. */
   append(seismogram) {
     if (Array.isArray(seismogram)) {
       for(let s of seismogram) {
@@ -667,6 +680,7 @@ export class chart {
     }
     let minMax = findMinMax(this.segments);
     this.yScale.domain(minMax); 
+    this.rescaleYAxis();
     this.drawSegments(this.segments, this.g.select("g.allsegments"));
     return this;
   }
@@ -679,6 +693,7 @@ export class chart {
       if (this.segments.length > 0) {
         let minMax = findMinMax(this.segments);
         this.yScale.domain(minMax); 
+        this.rescaleYAxis();
         this.drawSegments(this.segments, this.g.select("g.allsegments"));
       }
     }
