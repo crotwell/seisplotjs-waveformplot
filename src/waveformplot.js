@@ -217,10 +217,12 @@ export class chart {
     this.origXScale = this.xScale;
     this.currZoomXScale = this.xScale;
     this.yScale = d3.scaleLinear();
+    // yScale for axis (not drawing) that puts mean at 0 in center
+    this.yScaleRmean = d3.scaleLinear();
     this.scaleChangeListeners = [];
 
     this.xAxis = d3.axisBottom(this.xScale).tickFormat(this.xScaleFormat);
-    this.yAxis = d3.axisLeft(this.yScale).ticks(8, this.yScaleFormat);
+    this.yAxis = d3.axisLeft(this.yScaleRmean).ticks(8, this.yScaleFormat);
 
     //sets height and width and things that depend on those
     try {
@@ -268,9 +270,7 @@ export class chart {
       .attr("transform", "translate(" + this.margin.left + "," + this.margin.top + ")");
     this.g.append("g").attr("class", "allsegments");
     this.svg.call(this.zoom);
-
-    let minMax = findMinMax(inSegments);
-    this.yScale.domain(minMax); 
+    this.calcScaleDomain();
 
     // create marker g
     this.g.append("g").attr("class", "allmarkers")
@@ -512,6 +512,7 @@ export class chart {
             .attr("height", this.outerHeight);
     this.xScale.range([0, this.width]);
     this.yScale.range([this.height, 0]);
+    this.yScaleRmean.range([this.height, 0]);
   }
     
 
@@ -566,6 +567,7 @@ export class chart {
     this.height = this.outerHeight - this.margin.top - this.margin.bottom;
     this.xScale.range([0, this.width]);
     this.yScale.range([this.height, 0]);
+    this.yScaleRmean.range([this.height, 0]);
 
     this.svg
       .attr("height", this.outerHeight)
@@ -669,6 +671,13 @@ export class chart {
     return this;
   }
 
+  calcScaleDomain() {
+    let minMax = findMinMax(this.segments);
+    this.yScale.domain(minMax); 
+    this.yScaleRmean.domain([ (minMax[0]-minMax[1])/2, (minMax[1]-minMax[0])/2 ]);
+    this.rescaleYAxis();
+  }
+
   /** can append single seismogram segment or an array of segments. */
   append(seismogram) {
     if (Array.isArray(seismogram)) {
@@ -678,9 +687,7 @@ export class chart {
     } else {
       this.segments.push(seismogram);
     }
-    let minMax = findMinMax(this.segments);
-    this.yScale.domain(minMax); 
-    this.rescaleYAxis();
+    this.calcScaleDomain();
     this.drawSegments(this.segments, this.g.select("g.allsegments"));
     return this;
   }
@@ -691,9 +698,7 @@ export class chart {
         return d.end().getTime() > timeWindow.start.getTime();
       });
       if (this.segments.length > 0) {
-        let minMax = findMinMax(this.segments);
-        this.yScale.domain(minMax); 
-        this.rescaleYAxis();
+        this.calcScaleDomain();
         this.drawSegments(this.segments, this.g.select("g.allsegments"));
       }
     }
