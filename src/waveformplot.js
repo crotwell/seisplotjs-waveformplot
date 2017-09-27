@@ -22,7 +22,7 @@ export { miniseed , d3 };
   * service.iris.edu.
   *
   * Note that css style for the selector should set both stoke to a color
-  * and fill to none in order for the seismogram to display. 
+  * and fill to none in order for the seismogram to display.
   * This can be done by: <br>
   * yourselector {
   *   stroke: skyblue;
@@ -76,12 +76,12 @@ export function calcClockOffset(serverTime) {
   return dataselect.calcClockOffset(serverTime);
 }
 
-/** 
+/**
 Any two of start, end and duration can be specified, or just duration which
 then assumes end is now.
 start and end are Date objects, duration is in seconds.
 clockOffset is the milliseconds that should be subtracted from the local time
- to get real world time, ie local - UTC 
+ to get real world time, ie local - UTC
  or new Date().getTime() - serverDate.getTime()
  default is zero.
 */
@@ -130,11 +130,11 @@ export function loadParseSplitUrl(url, callback) {
         callback(error, null);
       } else {
         let byChannel = miniseed.byChannel(dataRecords);
-        let keys = Object.keys(byChannel);
+        let keys = byChannel.keys();
         let segments = [];
         for(let i=0; i<keys.length; i++) {
           let key = keys[i];
-          segments[i] = miniseed.merge(byChannel[key]);
+          segments[i] = miniseed.merge(byChannel.get(key));
         }
         callback(null, segments);
       }
@@ -181,7 +181,7 @@ export function findMinMax(data, minMaxAccumulator) {
   *   stroke: skyblue;
   *   fill: none;
   * }<br/>
-  * in order to have the seismogram display. 
+  * in order to have the seismogram display.
   */
 export class chart {
   constructor(inSvgParent, inSegments, plotStartDate, plotEndDate) {
@@ -228,7 +228,7 @@ export class chart {
     try {
     let inWidth = inSvgParent.style("width");
     let inHeight = inSvgParent.style("height");
-    this.setWidthHeight( inWidth ? parseInt(inWidth) : 100, 
+    this.setWidthHeight( inWidth ? parseInt(inWidth) : 100,
                          inHeight ? parseInt(inHeight) : 100);
     } catch(e) {
       this.setWidthHeight(200, 100);
@@ -248,7 +248,7 @@ export class chart {
       let secondsPerPixel = this.calcSecondsPerPixel( mythis.xScale);
       let samplesPerPixel = maxSps * secondsPerPixel;
       let zoomLevelFactor = samplesPerPixel*this.maxZoomPixelPerSample;
-      maxZoom = Math.max(maxZoom, 
+      maxZoom = Math.max(maxZoom,
                          Math.pow(2, Math.ceil(Math.log(zoomLevelFactor)/Math.log(2))));
     }
 
@@ -303,11 +303,11 @@ export class chart {
         .append("g")
           .attr("class", "segment")
         .append("path")
-          .attr("class", function(seg) { 
+          .attr("class", function(seg) {
               return "seispath "+seg.codes()+" orient"+seg.chanCode().charAt(2);
           })
           .attr("style", "clip-path: url(#clip)")
-          .attr("d", function(seg) { 
+          .attr("d", function(seg) {
              return mythis.segmentDrawLine(seg, mythis.xScale);
            });
   }
@@ -328,8 +328,8 @@ export class chart {
       }));
     } else {
       // lots of points per pixel so use high/low lines
-      if ( ! seg.highlow 
-           || seg.highlow.secondsPerPixel != secondsPerPixel 
+      if ( ! seg.highlow
+           || seg.highlow.secondsPerPixel != secondsPerPixel
            || seg.highlow.xScaleDomain[1] != xScale.domain()[1]) {
         let highlow = [];
         let numHL = 2*Math.ceil(seg.y().length/samplesPerPixel);
@@ -359,7 +359,7 @@ export class chart {
     }
   }
 
-  drawAxis(svgG) { 
+  drawAxis(svgG) {
     svgG.append("g")
         .attr("class", "axis axis--x")
         .attr("transform", "translate(0," + this.height + ")")
@@ -408,7 +408,7 @@ export class chart {
     let mythis = this;
     this.currZoomXScale = xt;
     this.g.selectAll(".segment").select("path")
-          .attr("d", function(seg) { 
+          .attr("d", function(seg) {
              return mythis.segmentDrawLine(seg, xt);
            });
     this.g.select("g.allmarkers").selectAll("g.marker")
@@ -427,7 +427,7 @@ export class chart {
     let labelSelection = markerG.selectAll("g.marker")
         .data(markers, function(d) {
               // key for data
-              return d.name+"_"+d.time.getTime(); 
+              return d.name+"_"+d.time.getTime();
             });
     labelSelection.exit().remove();
 
@@ -445,7 +445,7 @@ export class chart {
           })
         .each(function(marker) {
           let drawG = d3.select(this);
-     
+
           let innerTextG = drawG.append("g")
             .attr("class", "markertext")
             .attr("transform", function(marker) {
@@ -473,7 +473,7 @@ export class chart {
                       //  https://bugzilla.mozilla.org/show_bug.cgi?id=612118
                     }
                 });
-              }); 
+              });
           // draw/insert flag dehind/before text
           innerTextG.insert("polygon", "text")
               .attr("points", function(marker) {
@@ -498,7 +498,7 @@ export class chart {
                 }).y(function(d, i) {
                   return (i==0) ? 0 : chartThis.yScale.range()[0];
                 }).curve(d3.curveLinear)([ chartThis.yScale.domain()[0], chartThis.yScale.domain()[1] ] ); // call the d3 function created by line with data
-    
+
             });
         });
   }
@@ -514,7 +514,7 @@ export class chart {
     this.yScale.range([this.height, 0]);
     this.yScaleRmean.range([this.height, 0]);
   }
-    
+
 
   // see http://blog.kevinchisholm.com/javascript/javascript-function-throttling/
   throttle(func, delay){
@@ -523,7 +523,7 @@ export class chart {
     }
     this.throttleResize = window.setTimeout(func, delay);
   }
-    
+
   resizeNeeded() {
     let myThis = this;
     this.throttle(function(){
@@ -544,7 +544,7 @@ export class chart {
     this.redrawWithXScale(this.xScale);
     return this;
   }
-    
+
   setWidth(value) {
     if (!arguments.length)
       return this.width;
@@ -575,17 +575,29 @@ export class chart {
     this.g.attr("transform", "translate(" + this.margin.left + "," + this.margin.top + ")");
     return this;
   }
+  /** Sets the title as simple string or array of strings. If an array
+  then each item will be in a separate tspan for easier formatting.
+  */
   setTitle(value) {
     if (!arguments.length)
       return this.title;
     this.title = value;
     this.svg.selectAll("g.title").remove();
-    this.svg.append("g")
+    let titleSVGText = this.svg.append("g")
        .classed("title", true)
        .attr("transform", "translate("+(this.margin.left+(this.width)/2)+", "+( this.margin.bottom/3  )+")")
        .append("text").classed("title label", true)
-       .attr("text-anchor", "middle")
-       .text(this.title);
+       .attr("text-anchor", "middle");
+    if (Array.isArray(value)) {
+      console.log("title is array");
+      value.forEach(function(s) {
+        titleSVGText.append("tspan").text(s+" ");
+      });
+    } else {
+      console.log("title simple string");
+      titleSVGText
+        .text(this.title);
+    }
     return this;
   }
   setXLabel(value) {
@@ -652,7 +664,7 @@ export class chart {
     return this;
   }
   clearMarkers() {
-    this.markers.length = 0; //set array length to zero deletes all 
+    this.markers.length = 0; //set array length to zero deletes all
     this.drawMarkers(this.markers, this.g.select("g.allmarkers"));
     return this;
   }
@@ -673,7 +685,7 @@ export class chart {
 
   calcScaleDomain() {
     let minMax = findMinMax(this.segments);
-    this.yScale.domain(minMax); 
+    this.yScale.domain(minMax);
     this.yScaleRmean.domain([ (minMax[0]-minMax[1])/2, (minMax[1]-minMax[0])/2 ]);
     this.rescaleYAxis();
   }
