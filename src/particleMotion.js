@@ -83,8 +83,8 @@ export class particleMotion {
     let lineData = [];
     for (var i = 0; i < segA.y().length && i < segB.y().length; i++) {
       let d = {};
-      d.x = segA.yValueAt(i);
-      d.y = segB.yValueAt(i);
+      d.x = segA.yAtIndex(i);
+      d.y = segB.yAtIndex(i);
       lineData.push(d);
     }
 
