@@ -35,14 +35,15 @@ export { miniseed , d3, particleMotion,
 
 export function createPlotsBySelector(selector) {
   createPlotsBySelectorWithCallback(selector, function(error, segments, svgParent, startDate, endDate) {
-    console.log("in createPlotsBySelectorWithCallback callback");
     if (error) {
         console.assert(false, error);
     } else {
       svgParent.append("p").text("Build plot");
         if (segments.length >0) {
           let s = segments[0];
-          let seismogram = new chart(svgParent, s, startDate, endDate);
+          let svgDiv = svgParent.append("div");
+          svgDiv.classed("svg-container-wide", true);
+          let seismogram = new Seismograph(svgDiv, s, startDate, endDate);
           for ( let i=1; i< segments.length; i++) {
             seismogram.append(segments[i]);
           }
@@ -62,9 +63,11 @@ export function createPlotsBySelector(selector) {
   * }<br/>
   * in order to have the seismogram display.
   */
-export class chart {
+export class Seismograph {
   constructor(inSvgParent, inSegments, plotStartDate, plotEndDate) {
     if (inSvgParent == null) {throw new Error("inSvgParent cannot be null");}
+    this.plotId = ++Seismograph._lastID;
+    this.beforeFirstDraw = true;
     this.xScaleFormat = multiFormatHour;
     this.yScaleFormat = "3e";
     this.title = "";
@@ -82,6 +85,11 @@ export class chart {
                                          // separated by pixels
 
     this.svg = inSvgParent.append("svg");
+    this.svg.classed("svg-content-responsive", true);
+    this.svg.attr("version", "1.1");
+    this.svg.attr("preserveAspectRatio", "xMinYMin meet");
+    this.svg.attr("viewBox", "0 0 400 200")
+      .attr("plotId", this.plotId);
 
     this.parseDate = d3.timeParse("%b %Y");
 
@@ -103,20 +111,11 @@ export class chart {
     this.xAxis = d3.axisBottom(this.xScale).tickFormat(this.xScaleFormat);
     this.yAxis = d3.axisLeft(this.yScaleRmean).ticks(8, this.yScaleFormat);
 
-    //sets height and width and things that depend on those
-    try {
-    let inWidth = inSvgParent.style("width");
-    let inHeight = inSvgParent.style("height");
-    this.setWidthHeight( inWidth ? parseInt(inWidth) : 100,
-                         inHeight ? parseInt(inHeight) : 100);
-    } catch(e) {
-      this.setWidthHeight(200, 100);
-    }
     let mythis = this;
     this.lineFunc = d3.line()
       .curve(d3.curveLinear)
-      .x(function(d) {return mythis.xScale(d.time); })
-      .y(function(d) {return mythis.yScale(d.y); });
+      .x(function(d,i) {return mythis.xScale(d.time); })
+      .y(function(d,i) {return mythis.yScale(d.y); });
 
     let maxZoom = 8;
     if (inSegments && inSegments.length>0) {
@@ -132,18 +131,10 @@ export class chart {
     }
 
     this.zoom = d3.zoom()
-      .scaleExtent([1/4, maxZoom ] )
-      .translateExtent([[0, 0], [this.width, this.height]])
-      .extent([[0, 0], [this.width, this.height]])
-      .on("zoom", function(d) {
-          mythis.zoomed(mythis);
-        });
-
-    this.svg.append("defs").append("clipPath")
-        .attr("id", "clip")
-      .append("rect")
-        .attr("width", this.width)
-        .attr("height", this.height);
+            .scaleExtent([1/4, maxZoom ] )
+            .on("zoom", function(d) {
+                mythis.zoomed(mythis);
+              });
 
     this.g = this.svg.append("g")
       .attr("transform", "translate(" + this.margin.left + "," + this.margin.top + ")");
@@ -153,20 +144,52 @@ export class chart {
 
     // create marker g
     this.g.append("g").attr("class", "allmarkers")
-        .attr("style", "clip-path: url(#clip)");
+        .attr("style", "clip-path: url(#"+CLIP_PREFIX+this.plotId+")");
+
+    d3.select(window).on('resize.seismograph'+this.plotId, function() {if (mythis.checkResize()) {mythis.draw();}});
+
   }
 
   disableWheelZoom() {
     this.svg.call(this.zoom).on("wheel.zoom", null);
   }
 
+  checkResize() {
+    let rect = this.svgParent.node().getBoundingClientRect();
+    if (rect.width != this.outerWidth || rect.height != this.outerHeight) {
+      this.setWidthHeight(rect.width, rect.height);
+      return true;
+    }
+    return false;
+  }
   draw() {
+    this.beforeFirstDraw = false;
+    if (this.checkResize()) {
+      this.calcScaleAndZoom();
+    }
     this.drawSegments(this.segments, this.g.select("g.allsegments"));
     this.drawAxis(this.g);
     this.drawAxisLabels(this.svg);
     this.drawMarkers(this.markers, this.g.select("g.allmarkers"));
   }
 
+  calcScaleAndZoom() {
+    this.rescaleYAxis();
+    this.zoom = d3.zoom()
+          .translateExtent([[0, 0], [this.width, this.height]])
+          .extent([[0, 0], [this.width, this.height]]);
+    // check if clip exists, wonky d3 convention
+    let container = this.svg.select("defs").select("#"+CLIP_PREFIX+this.plotId);
+    if (container.empty()) {
+      this.svg.append("defs").append("clipPath").attr("id", CLIP_PREFIX+this.plotId);
+    }
+    let clip = this.svg.select("defs").select("#"+CLIP_PREFIX+this.plotId);
+
+    clip.selectAll("rect").remove();
+    clip.append("rect")
+            .attr("width", this.width)
+            .attr("height", this.height);
+  }
   drawSegments(segments, svgG) {
     let drawG = svgG;
     let mythis = this;
@@ -185,7 +208,7 @@ export class chart {
           .attr("class", function(seg) {
               return "seispath "+seg.codes()+" orient"+seg.chanCode().charAt(2);
           })
-          .attr("style", "clip-path: url(#clip)")
+          .attr("style", "clip-path: url(#"+CLIP_PREFIX+this.plotId+")")
           .attr("d", function(seg) {
              return mythis.segmentDrawLine(seg, mythis.xScale);
            });
@@ -194,6 +217,7 @@ export class chart {
   calcSecondsPerPixel(xScale) {
     let domain = xScale.domain(); // time so milliseconds
     let range = xScale.range(); // pixels
+    let secPerPixel = (domain[1].getTime()-domain[0].getTime())/1000 / (range[1]-range[0]);
     return (domain[1].getTime()-domain[0].getTime())/1000 / (range[1]-range[0]);
   }
 
@@ -239,6 +263,7 @@ export class chart {
   }
 
   drawAxis(svgG) {
+    svgG.selectAll("g.axis").remove();
     svgG.append("g")
         .attr("class", "axis axis--x")
         .attr("transform", "translate(0," + this.height + ")")
@@ -302,7 +327,7 @@ export class chart {
   drawMarkers(markers, markerG) {
     if ( ! markers) { markers = []; }
     // marker overlay
-    let chartThis = this;
+    let mythis = this;
     let labelSelection = markerG.selectAll("g.marker")
         .data(markers, function(d) {
               // key for data
@@ -319,7 +344,7 @@ export class chart {
         .attr("class", function(m) { return "marker "+m.name+" "+m.markertype;})
            // translate so marker time is zero
         .attr("transform", function(marker) {
-            let textx = chartThis.currZoomXScale( marker.time);
+            let textx = mythis.currZoomXScale( marker.time);
             return  "translate("+textx+","+0+")";
           })
         .each(function(marker) {
@@ -329,8 +354,8 @@ export class chart {
             .attr("class", "markertext")
             .attr("transform", function(marker) {
               // shift up by textOffset percentage
-              let maxY = chartThis.yScale.range()[0];
-              let deltaY = chartThis.yScale.range()[0]-chartThis.yScale.range()[1];
+              let maxY = mythis.yScale.range()[0];
+              let deltaY = mythis.yScale.range()[0]-mythis.yScale.range()[1];
               let texty = maxY - textOffset*(deltaY);
               return  "translate("+0+","+texty+") rotate("+textAngle+")";});
           innerTextG.append("title").text(function(marker) {
@@ -375,8 +400,8 @@ export class chart {
                 .x(function(d) {
                   return 0; // g is translated so marker time is zero
                 }).y(function(d, i) {
-                  return (i==0) ? 0 : chartThis.yScale.range()[0];
-                }).curve(d3.curveLinear)([ chartThis.yScale.domain()[0], chartThis.yScale.domain()[1] ] ); // call the d3 function created by line with data
+                  return (i==0) ? 0 : mythis.yScale.range()[0];
+                }).curve(d3.curveLinear)([ mythis.yScale.domain()[0], mythis.yScale.domain()[1] ] ); // call the d3 function created by line with data
 
             });
         });
@@ -387,11 +412,13 @@ export class chart {
     this.outerHeight = Math.max(100, nOuterHeight);
     this.height = this.outerHeight - this.margin.top - this.margin.bottom;
     this.width = this.outerWidth - this.margin.left - this.margin.right;
-    this.svg.attr("width", this.outerWidth)
-            .attr("height", this.outerHeight);
+    this.svg.attr("viewBox", "0 0 "+this.outerWidth+" "+this.outerHeight);
+    this.origXScale.range([0, this.width]);
     this.xScale.range([0, this.width]);
+    this.currZoomXScale.range([0, this.width]);
     this.yScale.range([this.height, 0]);
     this.yScaleRmean.range([this.height, 0]);
+    this.yAxis.scale(this.yScaleRmean);
   }
 
 
@@ -427,6 +454,7 @@ export class chart {
   setWidth(value) {
     if (!arguments.length)
       return this.width;
+    this.setWidthHeight(this.outerWidth, value);
     this.width = value;
     return this;
   }
@@ -434,7 +462,7 @@ export class chart {
   setHeight(value) {
     if (!arguments.length)
       return this.height;
-    this.height = value;
+    this.setWidthHeight(value, this.outerHeight);
     return this;
   }
 
@@ -442,15 +470,7 @@ export class chart {
     if (!arguments.length)
       return this.margin;
     this.margin = value;
-    this.width  = this.outerWidth - this.margin.left - this.margin.right;
-    this.height = this.outerHeight - this.margin.top - this.margin.bottom;
-    this.xScale.range([0, this.width]);
-    this.yScale.range([this.height, 0]);
-    this.yScaleRmean.range([this.height, 0]);
-
-    this.svg
-      .attr("height", this.outerHeight)
-      .attr("width", this.outerWidth);
+    this.setWidthHeight(this.outerWidth, this.outerHeight);
     this.g.attr("transform", "translate(" + this.margin.left + "," + this.margin.top + ")");
     return this;
   }
@@ -468,12 +488,10 @@ export class chart {
        .append("text").classed("title label", true)
        .attr("text-anchor", "middle");
     if (Array.isArray(value)) {
-      console.log("title is array");
       value.forEach(function(s) {
         titleSVGText.append("tspan").text(s+" ");
       });
     } else {
-      console.log("title simple string");
       titleSVGText
         .text(this.title);
     }
@@ -564,8 +582,10 @@ export class chart {
 
   calcScaleDomain() {
     let minMax = findMinMax(this.segments);
-    this.yScale.domain(minMax);
-    this.yScaleRmean.domain([ (minMax[0]-minMax[1])/2, (minMax[1]-minMax[0])/2 ]);
+    this.yScale.domain(minMax).nice();
+    let niceMinMax = this.yScale.domain();
+    this.yScaleRmean = this.yScale;
+    this.yScaleRmean.domain([ (niceMinMax[0]-niceMinMax[1])/2, (niceMinMax[1]-niceMinMax[0])/2 ]);
     this.rescaleYAxis();
   }
 
@@ -579,7 +599,11 @@ export class chart {
       this.segments.push(seismogram);
     }
     this.calcScaleDomain();
-    this.drawSegments(this.segments, this.g.select("g.allsegments"));
+    if ( ! this.beforeFirstDraw) {
+      // only trigger a draw if appending after already drawn on screen
+      // otherwise, just append the data and wait for outside to call first draw()
+      this.drawSegments(this.segments, this.g.select("g.allsegments"));
+    }
     return this;
   }
 
@@ -595,6 +619,18 @@ export class chart {
     }
   }
 }
+// static ID for seismogram
+Seismograph._lastID = 0;
+
+const CLIP_PREFIX = "seismographclip";
+
+// backwards compatibility
+export class chart extends Seismograph {
+  constructor(inSvgParent, inSegments, plotStartDate, plotEndDate) {
+    super(inSvgParent, inSegments, plotStartDate, plotEndDate);
+    console.warn("chart is deprecated, please use Seismograph");
+  }
+};
 
 let formatMillisecond = d3.utcFormat(".%L"),
     formatSecond = d3.utcFormat(":%S"),

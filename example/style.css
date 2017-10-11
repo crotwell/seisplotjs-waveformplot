@@ -1,5 +1,7 @@
 div.myseisplot {
-  height: 400px;
+}
+
+div.particleMotion {
 }
 
 path.seispath {
@@ -8,6 +10,29 @@ path.seispath {
   stroke-width: 1px;
 }
 
+/* Responsive SVG */
+.svg-container-square {
+    display: inline-block;
+    position: relative;
+    width: 90%;
+    padding-bottom: 70%; /* aspect ratio */
+    vertical-align: top;
+    overflow: hidden;
+}
+.svg-container-wide {
+    display: inline-block;
+    position: relative;
+    width: 100%;
+    padding-bottom: 40%; /* aspect ratio */
+    vertical-align: top;
+    overflow: hidden;
+}
+.svg-content-responsive {
+    display: inline-block;
+    position: absolute;
+    top: 10px;
+    left: 0;
+}
 
 
 path.orientZ {

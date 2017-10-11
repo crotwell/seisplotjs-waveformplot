@@ -19,12 +19,11 @@ export function createParticleMotionBySelector(selector) {
       } else {
         svgParent.append("p").text("Build plot");
           if (segments.length >1) {
-            let sa = segments[0];
-            console.log("codes "+sa[0].codes());
-            let sb = segments[1];
-            let pmp = new particleMotion(svgParent, [sa[0], sb[0]], startDate, endDate);
-
-            pmp.draw();
+            addDivForParticleMotion(segments[0], segments[1], svgParent, startDate, endDate);
+            if (segments.length > 2) {
+              addDivForParticleMotion(segments[0], segments[2], svgParent, startDate, endDate);
+              addDivForParticleMotion(segments[1], segments[2], svgParent, startDate, endDate);
+            }
           } else {
             svgParent.append("p").text("No Data");
           }
@@ -32,16 +31,33 @@ export function createParticleMotionBySelector(selector) {
     });
   }
 
+function addDivForParticleMotion(sa, sb, svgParent, startDate, endDate) {
+  svgParent.append("h5").text(sa[0].chanCode()+" "+sb[0].chanCode());
+  let svgDiv = svgParent.append("div");
+  svgDiv.classed(sa[0].chanCode()+" "+sb[0].chanCode(), true);
+  svgDiv.classed("svg-container-square", true);
+  let pmp = new ParticleMotion(svgDiv, [sa[0], sb[0]], startDate, endDate);
+  pmp.setXLabel(sa[0].chanCode());
+  pmp.setYLabel(sb[0].chanCode());
+  pmp.draw();
+}
+
 /** Particle motion. */
-export class particleMotion {
+export class ParticleMotion {
   constructor(inSvgParent, inSegments, plotStartDate, plotEndDate) {
     if (inSvgParent == null) {throw new Error("inSvgParent cannot be null");}
     if (inSegments.length != 2) {throw new Error("inSegments should be lenght 2 but was "+inSegments.length);}
+    this.plotId = ++ParticleMotion._lastID;
 // maybe don't need, just plot as many points as can
 //    if (inSegments[0].y().length != inSegments[1].y().length) {throw new Error("inSegments should be of same lenght but was "+inSegments[0].y().length+" "+inSegments[1].y().length);}
     if ( ! plotStartDate) {plotStartDate = inSegments[0].start();}
     if ( ! plotEndDate) {plotEndDate = inSegments[0].end();}
     this.svg = inSvgParent.append("svg");
+    this.svg.classed("svg-content-responsive", true);
+    this.svg.attr("version", "1.1");
+    this.svg.attr("preserveAspectRatio", "xMinYMin meet");
+    this.svg.attr("viewBox", "0 0 400 400")
+      .attr("plotId", this.plotId);
     this.xScale = d3.scaleLinear();
     // yScale for axis (not drawing) that puts mean at 0 in center
     this.xScaleRmean = d3.scaleLinear();
@@ -55,57 +71,60 @@ export class particleMotion {
     this.xAxis = d3.axisBottom(this.xScaleRmean).ticks(8, this.yScaleFormat);
     this.yAxis = d3.axisLeft(this.yScaleRmean).ticks(8, this.yScaleFormat);
     this.margin = {top: 20, right: 20, bottom: 42, left: 65};
-    //sets height and width and things that depend on those
-    try {
-      let inWidth = inSvgParent.style("width");
-      let inHeight = inSvgParent.style("height");
-      this.setWidthHeight( inWidth ? parseInt(inWidth) : 100,
-                           inHeight ? parseInt(inHeight) : 100);
-    } catch(e) {
-      this.setWidthHeight(200, 100);
-    }
+    this.ySublabelTrans = 10;
     let mythis = this;
-    this.lineFunc = d3.line()
-      .curve(d3.curveLinear)
-      .x(function(d) {return mythis.xScale(d.x); })
-      .y(function(d) {return mythis.yScale(d.y); });
 
     this.g = this.svg.append("g")
         .attr("transform", "translate(" + this.margin.left + "," + this.margin.top + ")");
-
     this.calcScaleDomain();
+    d3.select(window).on('resize.particleMotion'+this.plotId, function() {if (mythis.checkResize()) {mythis.draw();}});
   }
   draw() {
+    this.checkResize();
     this.drawAxis(this.g);
+    this.drawAxisLabels(this.g);
     this.drawParticleMotion(this.segments[0], this.segments[1]);
   }
-  drawParticleMotion(segA, segB) {
-    let lineData = [];
-    for (var i = 0; i < segA.y().length && i < segB.y().length; i++) {
-      let d = {};
-      d.x = segA.yAtIndex(i);
-      d.y = segB.yAtIndex(i);
-      lineData.push(d);
+  checkResize() {
+    let rect = this.svgParent.node().getBoundingClientRect();
+    if (rect.width != this.outerWidth || rect.height != this.outerHeight) {
+      this.setWidthHeight(rect.width, rect.height);
+      return true;
     }
-
-    this.g.append("g")
+    return false;
+  }
+  drawParticleMotion(segA, segB) {
+    let mythis = this;
+    this.g.selectAll("g.particleMotion").remove();
+    let lineG = this.g.append("g").classed("particleMotion", true);
+    let path = lineG.selectAll("path").data( [ segA.y() ] );
+    path.exit().remove();
+    path.enter()
       .append("path")
       .attr("class", function(seg) {
         return "seispath "+segA.codes()+" orient"+segA.chanCode().charAt(2)+"_"+segB.chanCode().charAt(2);
       })
-    .attr("style", "clip-path: url(#clip)")
-    .attr("d", this.lineFunc(lineData));
+    .attr("d", d3.line().curve(d3.curveLinear)
+      .x(d => mythis.xScale(d))
+      .y((d,i) => mythis.yScale(segB.yAtIndex(i))));
   }
 
   drawAxis(svgG) {
+    svgG.selectAll("g.axis").remove();
     svgG.append("g")
         .attr("class", "axis axis--x")
         .attr("transform", "translate(0," + this.height + ")")
         .call(this.xAxis);
-
     svgG.append("g")
         .attr("class", "axis axis--y")
         .call(this.yAxis);
+  }
+  drawAxisLabels(svg) {
+    this.setTitle(this.title);
+    this.setXLabel(this.xLabel);
+    this.setXSublabel(this.xSublabel);
+    this.setYLabel(this.yLabel);
+    this.setYSublabel(this.ySublabel);
   }
 
   rescaleAxis() {
@@ -116,24 +135,117 @@ export class particleMotion {
 
   calcScaleDomain() {
     let minMax = findMinMax(this.segments[0]);
-    this.xScale.domain(minMax);
-    this.xScaleRmean.domain([ (minMax[0]-minMax[1])/2, (minMax[1]-minMax[0])/2 ]);
+    this.xScale.domain(minMax).nice();
+    let niceMinMax = this.xScale.domain();
+    this.xScaleRmean.domain([ (niceMinMax[0]-niceMinMax[1])/2, (niceMinMax[1]-niceMinMax[0])/2 ]);
     minMax = findMinMax(this.segments[1]);
-    this.yScale.domain(minMax);
-    this.yScaleRmean.domain([ (minMax[0]-minMax[1])/2, (minMax[1]-minMax[0])/2 ]);
+    this.yScale.domain(minMax).nice();
+    niceMinMax = this.yScale.domain();
+    this.yScaleRmean.domain([ (niceMinMax[0]-niceMinMax[1])/2, (niceMinMax[1]-niceMinMax[0])/2 ]);
     this.rescaleAxis();
   }
 
   setWidthHeight(nOuterWidth, nOuterHeight) {
-    this.outerWidth = Math.max(200, nOuterWidth);
+    this.outerWidth = Math.max(100, nOuterWidth);
     this.outerHeight = Math.max(100, nOuterHeight);
     this.height = this.outerHeight - this.margin.top - this.margin.bottom;
     this.width = this.outerWidth - this.margin.left - this.margin.right;
-    this.svg.attr("width", this.outerWidth)
-            .attr("height", this.outerHeight);
+    this.svg.attr("viewBox", "0 0 "+this.outerWidth+" "+this.outerHeight);
     this.xScale.range([0, this.width]);
     this.yScale.range([this.height, 0]);
     this.xScaleRmean.range([this.width, 0]);
     this.yScaleRmean.range([this.height, 0]);
   }
+  /** Sets the title as simple string or array of strings. If an array
+  then each item will be in a separate tspan for easier formatting.
+  */
+  setTitle(value) {
+    if (!arguments.length)
+      return this.title;
+    this.title = value;
+    this.svg.selectAll("g.title").remove();
+    let titleSVGText = this.svg.append("g")
+       .classed("title", true)
+       .attr("transform", "translate("+(this.margin.left+(this.width)/2)+", "+( this.margin.bottom/3  )+")")
+       .append("text").classed("title label", true)
+       .attr("text-anchor", "middle");
+    if (Array.isArray(value)) {
+      value.forEach(function(s) {
+        titleSVGText.append("tspan").text(s+" ");
+      });
+    } else {
+      titleSVGText
+        .text(this.title);
+    }
+    return this;
+  }
+  setXLabel(value) {
+    if (!arguments.length)
+      return this.xLabel;
+    this.xLabel = value;
+    this.svg.selectAll("g.xLabel").remove();
+    if (this.width && this.outerWidth) {
+    this.svg.append("g")
+       .classed("xLabel", true)
+       .attr("transform", "translate("+(this.margin.left+(this.width)/2)+", "+(this.outerHeight - this.margin.bottom/3  )+")")
+       .append("text").classed("x label", true)
+       .attr("text-anchor", "middle")
+       .text(this.xLabel);
+    }
+    return this;
+  }
+  setYLabel(value) {
+    if (!arguments.length)
+      return this.yLabel;
+    this.yLabel = value;
+    this.svg.selectAll('g.yLabel').remove();
+    if (this.height) {
+      this.svg.append("g")
+       .classed("yLabel", true)
+       .attr("x", 0)
+       .attr("transform", "translate(0, "+(this.margin.top+(this.height)/2)+")")
+       .append("text")
+       .classed("y label", true)
+       .attr("text-anchor", "middle")
+       .attr("dy", ".75em")
+       .attr("transform-origin", "center center")
+       .attr("transform", "rotate(-90)")
+       .text(this.yLabel);
+     }
+    return this;
+  }
+  setXSublabel(value) {
+    if (!arguments.length)
+      return this.xSublabel;
+    this.xSublabel = value;
+    this.svg.selectAll('g.xSublabel').remove();
+    this.svg.append("g")
+       .classed("xSublabel", true)
+       .attr("transform", "translate("+(this.margin.left+(this.width)/2)+", "+(this.outerHeight  )+")")
+       .append("text").classed("x label sublabel", true)
+       .attr("text-anchor", "middle")
+       .text(this.xSublabel);
+    return this;
+  }
+  setYSublabel(value) {
+    if (!arguments.length)
+      return this.ySublabel;
+    this.ySublabel = value;
+    this.svg.selectAll('g.ySublabel').remove();
+
+    this.svg.append("g")
+       .classed("ySublabel", true)
+       .attr("x", 0)
+       .attr("transform", "translate( "+this.ySublabelTrans+" , "+(this.margin.top+(this.height)/2)+")")
+       .append("text")
+       .classed("y label sublabel", true)
+       .attr("text-anchor", "middle")
+       .attr("dy", ".75em")
+       .attr("transform-origin", "center center")
+       .attr("transform", "rotate(-90)")
+       .text(this.ySublabel);
+    return this;
+  }
 }
+// static ID for particle motion
+ParticleMotion._lastID = 0;

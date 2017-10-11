@@ -6,7 +6,7 @@
   "dependencies": {
     "d3": "^4.10.0",
     "seisplotjs-fdsndataselect": ">= 1.0.0",
-    "seisplotjs-miniseed": ">= 1.2.0-alpha.1"
+    "seisplotjs-miniseed": ">= 1.2.0-alpha.2"
   },
   "scripts": {
     "lint": "eslint 'src/*.js'",

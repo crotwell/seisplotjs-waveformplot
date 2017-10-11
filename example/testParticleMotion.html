@@ -11,19 +11,22 @@
 
 <h3>Particle Motion</h3>
 <pre>
-&ltdiv height="500" class='myseisplot' net='US' sta='LONY' loc='--' chan='BHZ,BHN' start='2010-04-11T22:23:15' duration='3'  &gt
+&ltdiv height="500" class='particleMotion' net='US' sta='LONY' loc='--' chan='BHZ,BHN,BHE' start='2010-04-11T22:23:15' duration='3'  &gt
 &lt/div&gt
 </pre>
 
-<div height="500" class='myseisplot'  net='US' sta='LONY' loc='--' chan='BHZ,BHN' start='2010-04-11T22:23:15' duration='3' >
+<div href="jsc_parmo.mseed" class='particleMotion'  net='US' sta='LONY' loc='--' chan='BHZ,BHN,BHE' start='2010-04-11T22:23:15' duration='3' >
 </div>
 
+<div  href="jsc_parmo.mseed" class='myseisplot'  net='US' sta='LONY' loc='--' chan='BHZ,BHN,BHE' start='2010-04-11T22:23:15' duration='3' >
+</div>
 
 <script src="polyfill.min.js"></script>
 <script src="seisplotjs_waveformplot_1.2.2-alpha.2_standalone.js"></script>
 <script>
   var wp = seisplotjs_waveformplot;
-  wp.createParticleMotionBySelector('div.myseisplot');
+  wp.createParticleMotionBySelector('div.particleMotion');
+  wp.createPlotsBySelector('div.myseisplot');
 </script>
 </body>
 </html>
