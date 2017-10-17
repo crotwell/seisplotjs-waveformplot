@@ -55,6 +55,7 @@ export function createPlotsBySelector(selector) {
   });
 }
 
+
 /** A seismogram plot, using d3. Note that you must have
   * stroke and fill set in css like:<br>
   * path.seispath {
@@ -77,8 +78,11 @@ export class Seismograph {
     this.ySublabel = "";
     this.ySublabelTrans = 10;
     this.svgParent = inSvgParent;
-    this.segments = inSegments;
+    this.segments = [];
+    this._internalAppend(inSegments);
     this.markers = [];
+    this.markerTextOffset = .85;
+    this.markerTextAngle = 45;
     this.margin = {top: 20, right: 20, bottom: 42, left: 65};
     this.segmentDrawCompressedCutoff=10;//below this draw all points, above draw minmax
     this.maxZoomPixelPerSample = 20; // no zoom in past point of sample
@@ -118,9 +122,9 @@ export class Seismograph {
       .y(function(d,i) {return mythis.yScale(d.y); });
 
     let maxZoom = 8;
-    if (inSegments && inSegments.length>0) {
+    if (this.segments && this.segments.length>0) {
       let maxSps = 1;
-      maxSps = inSegments.reduce(function(accum, seg) {
+      maxSps = this.segments.reduce(function(accum, seg) {
         return Math.max(accum, seg.sampleRate());
       }, maxSps);
       let secondsPerPixel = this.calcSecondsPerPixel( mythis.xScale);
@@ -146,7 +150,9 @@ export class Seismograph {
     this.g.append("g").attr("class", "allmarkers")
         .attr("style", "clip-path: url(#"+CLIP_PREFIX+this.plotId+")");
 
-    d3.select(window).on('resize.seismograph'+this.plotId, function() {if (mythis.checkResize()) {mythis.draw();}});
+    d3.select(window).on('resize.seismograph'+this.plotId, function() {
+      if (mythis.checkResize()) {mythis.draw();}
+    });
 
   }
 
@@ -165,7 +171,6 @@ export class Seismograph {
   draw() {
     this.beforeFirstDraw = false;
     if (this.checkResize()) {
-      this.calcScaleAndZoom();
     }
     this.drawSegments(this.segments, this.g.select("g.allsegments"));
     this.drawAxis(this.g);
@@ -309,17 +314,34 @@ export class Seismograph {
   }
 
   redrawWithXScale(xt) {
-    let mythis = this;
     this.currZoomXScale = xt;
+    let mythis = this;
     this.g.selectAll(".segment").select("path")
           .attr("d", function(seg) {
              return mythis.segmentDrawLine(seg, xt);
            });
     this.g.select("g.allmarkers").selectAll("g.marker")
-        .attr("transform", function(marker) {
-          let textx = xt( marker.time);
-          return  "translate("+textx+","+0+")";});
+          .attr("transform", function(marker) {
+            let textx = xt( marker.time);
+            return  "translate("+textx+","+0+")";});
 
+     this.g.select("g.allmarkers").selectAll("g.markertext")
+         .attr("transform", function(marker) {
+           // shift up by this.markerTextOffset percentage
+           let maxY = mythis.yScale.range()[0];
+           let deltaY = mythis.yScale.range()[0]-mythis.yScale.range()[1];
+           let texty = maxY - mythis.markerTextOffset*(deltaY);
+           return  "translate("+0+","+texty+") rotate("+mythis.markerTextAngle+")";});
+
+     this.g.select("g.allmarkers").selectAll("path.markerpath")
+       .attr("d", function(marker) {
+         return d3.line()
+           .x(function(d) {
+             return 0; // g is translated so marker time is zero
+           }).y(function(d, i) {
+             return (i==0) ? 0 : mythis.yScale.range()[0];
+           }).curve(d3.curveLinear)([ mythis.yScale.domain()[0], mythis.yScale.domain()[1] ] ); // call the d3 function created by line with data
+      });
     this.g.select(".axis--x").call(this.xAxis.scale(xt));
     this.scaleChangeListeners.forEach(l => l.notifyScaleChange(xt));
   }
@@ -335,9 +357,7 @@ export class Seismograph {
             });
     labelSelection.exit().remove();
 
-    let textOffset = .85;
-    let textAngle = 45;
-    let radianTextAngle = textAngle*Math.PI/180;
+    let radianTextAngle = this.markerTextAngle*Math.PI/180;
 
     labelSelection.enter()
         .append("g")
@@ -353,11 +373,11 @@ export class Seismograph {
           let innerTextG = drawG.append("g")
             .attr("class", "markertext")
             .attr("transform", function(marker) {
-              // shift up by textOffset percentage
+              // shift up by this.markerTextOffset percentage
               let maxY = mythis.yScale.range()[0];
               let deltaY = mythis.yScale.range()[0]-mythis.yScale.range()[1];
-              let texty = maxY - textOffset*(deltaY);
-              return  "translate("+0+","+texty+") rotate("+textAngle+")";});
+              let texty = maxY - mythis.markerTextOffset*(deltaY);
+              return  "translate("+0+","+texty+") rotate("+mythis.markerTextAngle+")";});
           innerTextG.append("title").text(function(marker) {
               return marker.name+" "+marker.time.toISOString();
           });
@@ -378,7 +398,7 @@ export class Seismograph {
                     }
                 });
               });
-          // draw/insert flag dehind/before text
+          // draw/insert flag behind/before text
           innerTextG.insert("polygon", "text")
               .attr("points", function(marker) {
                 let bboxH = marker.bbox.height+5;
@@ -419,6 +439,8 @@ export class Seismograph {
     this.yScale.range([this.height, 0]);
     this.yScaleRmean.range([this.height, 0]);
     this.yAxis.scale(this.yScaleRmean);
+    this.calcScaleAndZoom();
+    this.redrawWithXScale(this.xScale);
   }
 
 
@@ -584,20 +606,25 @@ export class Seismograph {
     let minMax = findMinMax(this.segments);
     this.yScale.domain(minMax).nice();
     let niceMinMax = this.yScale.domain();
-    this.yScaleRmean = this.yScale;
     this.yScaleRmean.domain([ (niceMinMax[0]-niceMinMax[1])/2, (niceMinMax[1]-niceMinMax[0])/2 ]);
     this.rescaleYAxis();
   }
 
   /** can append single seismogram segment or an array of segments. */
-  append(seismogram) {
+  _internalAppend(seismogram) {
     if (Array.isArray(seismogram)) {
       for(let s of seismogram) {
-        this.segments.push(s);
+        this._internalAppend(seismogram);
       }
     } else {
+      if ( ! seismogram.y) {
+        throw new Error("attempt to append array of array, but subseismogram doesn't have y: "+seismogram);
+      }
       this.segments.push(seismogram);
     }
+  }
+  append(seismogram) {
+    this._internalAppend(seismogram);
     this.calcScaleDomain();
     if ( ! this.beforeFirstDraw) {
       // only trigger a draw if appending after already drawn on screen
