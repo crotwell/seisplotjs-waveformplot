@@ -614,7 +614,7 @@ export class Seismograph {
   _internalAppend(seismogram) {
     if (Array.isArray(seismogram)) {
       for(let s of seismogram) {
-        this._internalAppend(seismogram);
+        this._internalAppend(s);
       }
     } else {
       if ( ! seismogram.y) {
