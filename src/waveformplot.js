@@ -604,6 +604,10 @@ export class Seismograph {
 
   calcScaleDomain() {
     let minMax = findMinMax(this.segments);
+    if (minMax[0] == minMax[1]) {
+      // flatlined data, use -1, +1
+      minMax = [ minMax[0]-1, minMax[1]+1];
+    }
     this.yScale.domain(minMax).nice();
     let niceMinMax = this.yScale.domain();
     this.yScaleRmean.domain([ (niceMinMax[0]-niceMinMax[1])/2, (niceMinMax[1]-niceMinMax[0])/2 ]);
