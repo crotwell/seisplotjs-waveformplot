@@ -33,6 +33,8 @@ export { miniseed , d3, particleMotion,
     createParticleMotionBySelector
 };
 
+const moment = miniseed.model.moment;
+
 export function createPlotsBySelector(selector) {
   createPlotsBySelectorWithCallback(selector, function(error, segments, svgParent, startDate, endDate) {
     if (error) {
@@ -232,7 +234,7 @@ export class Seismograph {
     this.lineFunc.x(function(d) { return xScale(d.time); });
     if (samplesPerPixel < this.segmentDrawCompressedCutoff) {
       return this.lineFunc(seg.y().map(function(d,i) {
-        return {time: seg.timeOfSample(i), y: d };
+        return {time: seg.timeOfSample(i).toDate(), y: d };
       }));
     } else {
       // lots of points per pixel so use high/low lines
@@ -262,7 +264,7 @@ export class Seismograph {
         };
       }
       return this.lineFunc(seg.highlow.highlowArray.map(function(d,i) {
-        return {time: new Date(seg.start().getTime()+1000*((Math.floor(i/2)+.5)*secondsPerPixel)), y: d };
+        return {time: new Date(seg.start().valueOf()+1000*((Math.floor(i/2)+.5)*secondsPerPixel)), y: d };
       }));
     }
   }
@@ -466,8 +468,8 @@ export class Seismograph {
     return this.setPlotStartEnd(this.xScale.domain()[0], value);
   }
   setPlotStartEnd(startDate, endDate) {
-    this.plotStart = startDate;
-    this.plotEnd = endDate;
+    this.plotStart = (startDate instanceof Date) ? startDate : moment.utc(startDate).toDate();
+    this.plotEnd = (endDate instanceof Date) ? endDate : moment.utc(endDate).toDate();;
     this.xScale.domain([ this.plotStart, this.plotEnd ]);
     this.redrawWithXScale(this.xScale);
     return this;
