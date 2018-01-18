@@ -355,7 +355,7 @@ export class Seismograph {
     let labelSelection = markerG.selectAll("g.marker")
         .data(markers, function(d) {
               // key for data
-              return d.name+"_"+d.time.getTime();
+              return d.name+"_"+d.time.valueOf();
             });
     labelSelection.exit().remove();
 
@@ -584,6 +584,14 @@ export class Seismograph {
        .text(this.ySublabel);
     return this;
   }
+  setTimeFormatter(formatter) {
+    this.xScaleFormat = formatter;
+    this.xAxis.tickFormat(this.xScaleFormat);
+  }
+  setAmplitudeFormatter(formatter) {
+    this.yScaleFormat = formatter;
+    this.yAxis.tickFormat(this.yScaleFormat);
+  }
   clearMarkers() {
     this.markers.length = 0; //set array length to zero deletes all
     this.drawMarkers(this.markers, this.g.select("g.allmarkers"));
@@ -643,7 +651,7 @@ export class Seismograph {
   trim(timeWindow) {
     if (this.segments) {
       this.segments = this.segments.filter(function(d) {
-        return d.end().getTime() > timeWindow.start.getTime();
+        return d.end().isAfter(timeWindow.start);
       });
       if (this.segments.length > 0) {
         this.calcScaleDomain();
