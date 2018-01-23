@@ -1,33 +1,26 @@
 
 
-import * as d3 from 'd3';
-import {createPlotsBySelectorWithCallback,
-    calcClockOffset,
-    calcStartEndDates,
-    formRequestUrl,
-    loadParseSplit,
-    loadParse,
-    loadParseSplitUrl,
-    findStartEnd,
+import {
+    d3,
+    createPlotsBySelectorPromise,
     findMinMax
   } from './util';
 
 export function createParticleMotionBySelector(selector) {
-    createPlotsBySelectorWithCallback(selector, function(error, segments, svgParent, startDate, endDate) {
-      if (error) {
-          console.assert(false, error);
-      } else {
-        svgParent.append("p").text("Build plot");
-          if (segments.length >1) {
-            addDivForParticleMotion(segments[0], segments[1], svgParent, startDate, endDate);
-            if (segments.length > 2) {
-              addDivForParticleMotion(segments[0], segments[2], svgParent, startDate, endDate);
-              addDivForParticleMotion(segments[1], segments[2], svgParent, startDate, endDate);
+    createPlotsBySelectorPromise(selector)
+    .then(function(resultArray) {
+      resultArray.forEach(function(result) {
+        result.svgParent.append("p").text("Build plot");
+          if (result.segments.length >1) {
+            addDivForParticleMotion(result.segments[0], result.segments[1], result.svgParent, result.startDate, result.endDate);
+            if (result.segments.length > 2) {
+              addDivForParticleMotion(result.segments[0], result.segments[2], result.svgParent, result.startDate, result.endDate);
+              addDivForParticleMotion(result.segments[1], result.segments[2], result.svgParent, result.startDate, result.endDate);
             }
           } else {
-            svgParent.append("p").text("No Data");
+            result.svgParent.append("p").text("No Data");
           }
-      }
+      });
     });
   }
 
@@ -101,7 +94,7 @@ export class ParticleMotion {
     path.exit().remove();
     path.enter()
       .append("path")
-      .attr("class", function(seg) {
+      .attr("class", function() {
         return "seispath "+segA.codes()+" orient"+segA.chanCode().charAt(2)+"_"+segB.chanCode().charAt(2);
       })
     .attr("d", d3.line().curve(d3.curveLinear)
@@ -119,7 +112,7 @@ export class ParticleMotion {
         .attr("class", "axis axis--y")
         .call(this.yAxis);
   }
-  drawAxisLabels(svg) {
+  drawAxisLabels() {
     this.setTitle(this.title);
     this.setXLabel(this.xLabel);
     this.setXSublabel(this.xSublabel);

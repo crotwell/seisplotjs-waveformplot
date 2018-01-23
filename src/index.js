@@ -1,6 +1,4 @@
 import {
-  miniseed ,
-  d3,
   createPlotsBySelector,
   Seismograph,
   chart
@@ -12,7 +10,11 @@ import {
 } from './particleMotion';
 
 import {
+  miniseed ,
+  d3,
+  RSVP,
   createPlotsBySelectorWithCallback,
+  createPlotsBySelectorPromise,
   calcClockOffset,
   calcStartEndDates,
   formRequestUrl,
@@ -27,11 +29,13 @@ import {
 export {
     miniseed ,
     d3,
+    RSVP,
     createPlotsBySelector,
     Seismograph,
     chart,
     particleMotion,
     createParticleMotionBySelector,
+    createPlotsBySelectorPromise,
     createPlotsBySelectorWithCallback,
     calcClockOffset,
     calcStartEndDates,

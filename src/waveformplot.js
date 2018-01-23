@@ -7,53 +7,34 @@
 
 import * as d3 from 'd3';
 import * as miniseed from 'seisplotjs-miniseed';
-import {particleMotion, createParticleMotionBySelector} from './particleMotion';
-import {createPlotsBySelectorWithCallback,
-    calcClockOffset,
-    calcStartEndDates,
-    formRequestUrl,
-    loadParseSplit,
-    loadParse,
-    loadParseSplitUrl,
+import {createPlotsBySelectorPromise,
     findStartEnd,
     findMinMax
   } from './util';
 
-/* re-export */
-export { miniseed , d3, particleMotion,
-    createPlotsBySelectorWithCallback,
-    calcClockOffset,
-    calcStartEndDates,
-    formRequestUrl,
-    loadParseSplit,
-    loadParse,
-    loadParseSplitUrl,
-    findStartEnd,
-    findMinMax,
-    createParticleMotionBySelector
-};
-
 const moment = miniseed.model.moment;
 
 export function createPlotsBySelector(selector) {
-  createPlotsBySelectorWithCallback(selector, function(error, segments, svgParent, startDate, endDate) {
-    if (error) {
-        console.assert(false, error);
-    } else {
-      svgParent.append("p").text("Build plot");
-        if (segments.length >0) {
-          let s = segments[0];
-          let svgDiv = svgParent.append("div");
+  return createPlotsBySelectorPromise(selector).then(function(resultArray){
+    resultArray.forEach(function(result) {
+      result.svgParent.append("p").text("Build plot");
+        if (result.segments.length >0) {
+          let s = result.segments[0];
+          let svgDiv = result.svgParent.append("div");
           svgDiv.classed("svg-container-wide", true);
-          let seismogram = new Seismograph(svgDiv, s, startDate, endDate);
-          for ( let i=1; i< segments.length; i++) {
-            seismogram.append(segments[i]);
+          let seismogram = new Seismograph(svgDiv, s, result.startDate, result.endDate);
+          for ( let i=1; i< result.segments.length; i++) {
+            seismogram.append(result.segments[i]);
           }
           seismogram.draw();
         } else {
-          svgParent.append("p").text("No Data");
+          result.svgParent.append("p").text("No Data");
+          if (result.statusCode || result.statusText) {
+            result.svgParent.append("p").text(result.statusCode +" "+ result.responseText);
+          }
         }
-    }
+      });
+      return resultArray;
   });
 }
 
@@ -97,8 +78,6 @@ export class Seismograph {
     this.svg.attr("viewBox", "0 0 400 200")
       .attr("plotId", this.plotId);
 
-    this.parseDate = d3.timeParse("%b %Y");
-
     if ( ! plotStartDate || ! plotEndDate) {
       let st = findStartEnd(inSegments);
       plotStartDate = st.start;
@@ -120,8 +99,8 @@ export class Seismograph {
     let mythis = this;
     this.lineFunc = d3.line()
       .curve(d3.curveLinear)
-      .x(function(d,i) {return mythis.xScale(d.time); })
-      .y(function(d,i) {return mythis.yScale(d.y); });
+      .x(function(d) {return mythis.xScale(d.time); })
+      .y(function(d) {return mythis.yScale(d.y); });
 
     let maxZoom = 8;
     if (this.segments && this.segments.length>0) {
@@ -138,7 +117,7 @@ export class Seismograph {
 
     this.zoom = d3.zoom()
             .scaleExtent([1/4, maxZoom ] )
-            .on("zoom", function(d) {
+            .on("zoom", function() {
                 mythis.zoomed(mythis);
               });
 
@@ -172,8 +151,7 @@ export class Seismograph {
   }
   draw() {
     this.beforeFirstDraw = false;
-    if (this.checkResize()) {
-    }
+    this.checkResize();
     this.drawSegments(this.segments, this.g.select("g.allsegments"));
     this.drawAxis(this.g);
     this.drawAxisLabels(this.svg);
@@ -224,7 +202,6 @@ export class Seismograph {
   calcSecondsPerPixel(xScale) {
     let domain = xScale.domain(); // time so milliseconds
     let range = xScale.range(); // pixels
-    let secPerPixel = (domain[1].getTime()-domain[0].getTime())/1000 / (range[1]-range[0]);
     return (domain[1].getTime()-domain[0].getTime())/1000 / (range[1]-range[0]);
   }
 
@@ -294,7 +271,7 @@ export class Seismograph {
       }, delay);
   }
 
-  drawAxisLabels(svg) {
+  drawAxisLabels() {
     this.setTitle(this.title);
     this.setXLabel(this.xLabel);
     this.setXSublabel(this.xSublabel);
@@ -469,7 +446,7 @@ export class Seismograph {
   }
   setPlotStartEnd(startDate, endDate) {
     this.plotStart = (startDate instanceof Date) ? startDate : moment.utc(startDate).toDate();
-    this.plotEnd = (endDate instanceof Date) ? endDate : moment.utc(endDate).toDate();;
+    this.plotEnd = (endDate instanceof Date) ? endDate : moment.utc(endDate).toDate();
     this.xScale.domain([ this.plotStart, this.plotEnd ]);
     this.redrawWithXScale(this.xScale);
     return this;
@@ -671,7 +648,7 @@ export class chart extends Seismograph {
     super(inSvgParent, inSegments, plotStartDate, plotEndDate);
     console.warn("chart is deprecated, please use Seismograph");
   }
-};
+}
 
 let formatMillisecond = d3.utcFormat(".%L"),
     formatSecond = d3.utcFormat(":%S"),
@@ -690,17 +667,4 @@ let multiFormatHour = function(date) {
       : d3.utcMonth(date) < date ? (d3.utcWeek(date) < date ? formatDay : formatWeek)
       : d3.utcYear(date) < date ? formatMonth
       : formatYear)(date);
-};
-
-/*
- * from http://stackoverflow.com/questions/105034/how-to-create-a-guid-uuid-in-javascript
- */
-let s4 = function() {
-  return Math.floor((1 + Math.random()) * 0x10000)
-                 .toString(16)
-                 .substring(1);
-};
-let guid = function() {
-  return s4() + s4() + '-' + s4() + '-' + s4() + '-' +
-         s4() + '-' + s4() + s4() + s4();
 };

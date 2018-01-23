@@ -3,9 +3,13 @@
 import * as dataselect from 'seisplotjs-fdsndataselect';
 import * as miniseed from 'seisplotjs-miniseed';
 import * as d3 from 'd3';
+let RSVP = dataselect.RSVP;
 
+export { dataselect, miniseed, d3, RSVP };
 
-/** create seismogram plots by selecting elements using the supplied
+/** deprecated - use createPlotsBySelectorPromise instead.
+  *
+  * create seismogram plots by selecting elements using the supplied
   * css selector. Each element is expected to have attributes defined
   * for net, sta, loc, chan and two of start, end and duration.
   * Optionally, end will default to NOW if neither start or end are
@@ -23,8 +27,20 @@ import * as d3 from 'd3';
   * }<br/>
   */
 export function createPlotsBySelectorWithCallback(selector, callback) {
+   createPlotsBySelectorPromise(selector)
+     .then(function(dataRecords) {
+       callback(null, dataRecords);
+     }).catch(function(error) {
+       callback(error, null);
+     });
+}
+
+/** Returns an array of Promises, one per selected element.
+*/
+export function createPlotsBySelectorPromise(selector) {
   let clockOffset = 0; // should set from server
-  d3.selectAll(selector).each(function(d) {
+  let out = [];
+  d3.selectAll(selector).each(function() {
     let svgParent = d3.select(this);
     let url;
     let start = svgParent.attr("start") ? svgParent.attr("start") : null;
@@ -34,6 +50,22 @@ export function createPlotsBySelectorWithCallback(selector, callback) {
     let endDate = null;
     if (svgParent.attr("href")) {
       url = svgParent.attr("href");
+      out.push(new RSVP.Promise(function(resolve, reject) {
+      loadParseSplitUrl(url,
+        function(error, segments) {
+          if ( ! error) {
+            return {
+              "segments": segments,
+              "startDate": startDate,
+              "endDate": endDate,
+              "request": null,
+              "svgParent": svgParent
+            };
+          } else {
+            throw reject(error);
+          }
+        });
+        }));
     } else {
       let net = svgParent.attr("net");
       let sta = svgParent.attr("sta");
@@ -51,15 +83,40 @@ export function createPlotsBySelectorWithCallback(selector, callback) {
       let seisDates = dataselect.calcStartEndDates(start, end, duration, clockOffset);
       startDate = seisDates.start;
       endDate = seisDates.end;
-
-      url = formRequestUrl(protocol, host, net, sta, loc, chan, startDate, endDate);
+      let request = formRequest(protocol, host, net, sta, loc, chan, startDate, endDate);
+      out.push(request.query().then(function(dataRecords) {
+        let byChannel = miniseed.byChannel(dataRecords);
+        let keys = Array.from(byChannel.keys());
+        let segments = [];
+        for(let i=0; i<keys.length; i++) {
+          let key = keys[i];
+          segments.push(miniseed.merge(byChannel.get(key)));
+        }
+        return segments;
+      }).then(function(segments) {
+        return {
+          "segments": segments,
+          "startDate": startDate,
+          "endDate": endDate,
+          "request": request,
+          "svgParent": svgParent
+        };
+      }, function(result) {
+        // rejection, so no inSegments
+        // but may need others to display message
+        return {
+          "segments": [],
+          "startDate": start,
+          "endDate": end,
+          "request": request,
+          "svgParent": svgParent,
+          "responseText": String.fromCharCode.apply(null, new Uint8Array(result.response)),
+          "statusCode": result.status
+        };
+      }));
     }
-    console.log("URL: "+url);
-    loadParseSplitUrl(url,
-      function(error, segments) {
-        callback(error, segments, svgParent, startDate, endDate);
-      });
   });
+  return RSVP.all(out);
 }
 
 export function calcClockOffset(serverTime) {
@@ -79,7 +136,7 @@ export function calcStartEndDates(start, end, duration, clockOffset) {
   return dataselect.calcStartEndDates(start, end, duration, clockOffset);
 }
 
-export function formRequestUrl(protocol, host, net, sta, loc, chan, startDate, endDate) {
+export function formRequest(protocol, host, net, sta, loc, chan, startDate, endDate) {
   let dsQuery = new dataselect.DataSelectQuery()
       .protocol(protocol)
       .host(host)
@@ -89,7 +146,11 @@ export function formRequestUrl(protocol, host, net, sta, loc, chan, startDate, e
       .channelCode(chan)
       .startTime(startDate)
       .endTime(endDate);
-  return dsQuery.formURL();
+  return dsQuery;
+}
+
+export function formRequestUrl(protocol, host, net, sta, loc, chan, startDate, endDate) {
+   return formRequest(protocol, host, net, sta, loc, chan, startDate, endDate).formURL();
 }
 
 export function loadParseSplit(protocol, host, net, sta, loc, chan, startDate, endDate, callback) {
@@ -107,9 +168,11 @@ export function loadParse(url, callback) {
         function(error, data) {
           if (error) {
             callback(error, null);
-          } else {
+          } else if (data) {
             let dataRecords = miniseed.parseDataRecords(data.response);
             callback(null, dataRecords);
+          } else {
+            callback(new Error("Data is null"), null);
           }
         });
 }
@@ -119,10 +182,8 @@ export function loadParseSplitUrl(url, callback) {
       if (error) {
         callback(error, null);
       } else {
-        console.log("dataRecords: "+dataRecords.length);
         let byChannel = miniseed.byChannel(dataRecords);
         let keys = Array.from(byChannel.keys());
-        console.log("keys: "+keys);
         let segments = [];
         for(let i=0; i<keys.length; i++) {
           let key = keys[i];
