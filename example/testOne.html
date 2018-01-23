@@ -11,52 +11,24 @@
 
 <!--
 -->
-<h3>Plots of 60 seconds of CO.JSC.00.HHZ</h3>
+<h3>Plots of 360 seconds of CO.JSC.00.HHZ</h3>
 
 <p>Three ways of specifying the time window, start and duration</p>
 <pre>
-&ltdiv class='myseisplot' net='CO' sta='JSC' loc='00' chan='HHZ' start='2016-09-19T00:00:00' duration='60'&gt
+&ltdiv class='myseisplot' net='CO' sta='JSC' loc='00' chan='HHZ' start='2016-09-19T20:00:00' duration='360'&gt
 &lt/div&gt
 </pre>
 
-<div href="jsc.mseed" class='myseisplot' net='CO' sta='JSC' loc='00' chan='HHZ' start='2016-09-19T00:00:00' duration='10'>
+<div xxxhref="jsc.mseed" class='myseisplot' net='CO' sta='JSC' loc='00' chan='HHZ' start='2016-09-19T20:00:00' duration='360'>
 </div>
 
 
 <script src="polyfill.min.js"></script>
-<script src="seisplotjs_waveformplot_1.2.2-alpha.2_standalone.js"></script>
+<script src="seisplotjs_waveformplot_1.2.2-alpha.3_standalone.js"></script>
 <script>
 //var wp = require('seisplotjs-waveformplot');
 var wp = seisplotjs_waveformplot;
-wp.createPlotsBySelectorWithCallback('div.myseisplot', function(error, segments, svgParent, startDate, endDate) {
-    if (error) {
-        console.assert(false, error);
-    } else {
-      if (! startDate) {
-         startDate = segments[0][0].start();
-      }
-      if (! endDate) {
-         endDate = segments[0][0].end();
-      }
-      svgParent.append("p").text("Build plot");
-        if (segments.length >0) {
-          let s = segments[0];
-          let svgDiv = svgParent.append("div");
-          svgDiv.classed("svg-container-wide", true);
-          let seismogram = new wp.Seismograph(svgDiv, s, startDate, endDate);
-          for ( let i=1; i< segments.length; i++) {
-            seismogram.append(segments[i]);
-          }
-          let middle = new Date((startDate.getTime()+endDate.getTime())/2);
-          let markers = [ { markertype: 'predicted', name: "middle", time: middle } ];
-          seismogram.appendMarkers(markers);
-          seismogram.draw();
-        } else {
-          svgParent.append("p").text("No Data");
-        }
-    }
-  });
-
+wp.createPlotsBySelector('div.myseisplot')
 </script>
 </body>
 </html>
