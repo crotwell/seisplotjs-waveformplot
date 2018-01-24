@@ -653,10 +653,9 @@ export class chart extends Seismograph {
 let formatMillisecond = d3.utcFormat(".%L"),
     formatSecond = d3.utcFormat(":%S"),
     formatMinute = d3.utcFormat("%H:%M"),
-    formatHour = d3.utcFormat("%H %p"),
-    formatDay = d3.utcFormat("%a %d"),
-    formatWeek = d3.utcFormat("%b %d"),
-    formatMonth = d3.utcFormat("%B"),
+    formatHour = d3.utcFormat("%H:%M"),
+    formatDay = d3.utcFormat("%m/%d"),
+    formatMonth = d3.utcFormat("%Y/%m"),
     formatYear = d3.utcFormat("%Y");
 
 let multiFormatHour = function(date) {
@@ -664,7 +663,7 @@ let multiFormatHour = function(date) {
       : d3.utcMinute(date) < date ? formatSecond
       : d3.utcHour(date) < date ? formatMinute
       : d3.utcDay(date) < date ? formatHour
-      : d3.utcMonth(date) < date ? (d3.utcWeek(date) < date ? formatDay : formatWeek)
+      : d3.utcMonth(date) < date ?  formatDay
       : d3.utcYear(date) < date ? formatMonth
       : formatYear)(date);
 };
