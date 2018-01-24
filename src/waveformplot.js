@@ -66,6 +66,8 @@ export class Seismograph {
     this.markers = [];
     this.markerTextOffset = .85;
     this.markerTextAngle = 45;
+    this.width = 200;
+    this.height = 100;
     this.margin = {top: 20, right: 20, bottom: 42, left: 65};
     this.segmentDrawCompressedCutoff=10;//below this draw all points, above draw minmax
     this.maxZoomPixelPerSample = 20; // no zoom in past point of sample
@@ -407,8 +409,8 @@ export class Seismograph {
   }
 
   setWidthHeight(nOuterWidth, nOuterHeight) {
-    this.outerWidth = Math.max(200, nOuterWidth);
-    this.outerHeight = Math.max(100, nOuterHeight);
+    this.outerWidth = nOuterWidth ? Math.max(200, nOuterWidth) : 200;
+    this.outerHeight = nOuterHeight ? Math.max(100, nOuterHeight): 100;
     this.height = this.outerHeight - this.margin.top - this.margin.bottom;
     this.width = this.outerWidth - this.margin.left - this.margin.right;
     this.svg.attr("viewBox", "0 0 "+this.outerWidth+" "+this.outerHeight);
@@ -445,36 +447,30 @@ export class Seismograph {
     return this.setPlotStartEnd(this.xScale.domain()[0], value);
   }
   setPlotStartEnd(startDate, endDate) {
-    this.plotStart = (startDate instanceof Date) ? startDate : moment.utc(startDate).toDate();
-    this.plotEnd = (endDate instanceof Date) ? endDate : moment.utc(endDate).toDate();
-    this.xScale.domain([ this.plotStart, this.plotEnd ]);
+    const plotStart = (startDate instanceof Date) ? startDate : moment.utc(startDate).toDate();
+    const plotEnd = (endDate instanceof Date) ? endDate : moment.utc(endDate).toDate();
+    this.xScale.domain([ plotStart, plotEnd ]);
     this.redrawWithXScale(this.xScale);
     return this;
   }
 
   setWidth(value) {
-    if (!arguments.length)
-      return this.width;
-    this.setWidthHeight(this.outerWidth, value);
-    this.width = value;
-    return this;
-  }
-
-  setHeight(value) {
-    if (!arguments.length)
-      return this.height;
     this.setWidthHeight(value, this.outerHeight);
     return this;
   }
 
+  setHeight(value) {
+    this.setWidthHeight(this.outerWidth, value);
+    return this;
+  }
+
   setMargin(value) {
-    if (!arguments.length)
-      return this.margin;
     this.margin = value;
     this.setWidthHeight(this.outerWidth, this.outerHeight);
     this.g.attr("transform", "translate(" + this.margin.left + "," + this.margin.top + ")");
     return this;
   }
+
   /** Sets the title as simple string or array of strings. If an array
   then each item will be in a separate tspan for easier formatting.
   */
