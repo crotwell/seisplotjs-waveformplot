@@ -64,6 +64,8 @@ export class ParticleMotion {
     this.xAxis = d3.axisBottom(this.xScaleRmean).ticks(8, this.yScaleFormat);
     this.yAxis = d3.axisLeft(this.yScaleRmean).ticks(8, this.yScaleFormat);
     this.margin = {top: 20, right: 20, bottom: 42, left: 65};
+    this.width = 100;
+    this.height = 100;
     this.ySublabelTrans = 10;
     let mythis = this;
 
@@ -139,8 +141,8 @@ export class ParticleMotion {
   }
 
   setWidthHeight(nOuterWidth, nOuterHeight) {
-    this.outerWidth = Math.max(100, nOuterWidth);
-    this.outerHeight = Math.max(100, nOuterHeight);
+    this.outerWidth = nOuterWidth ? Math.max(100, nOuterWidth) : 100;
+    this.outerHeight = nOuterHeight ? Math.max(100, nOuterHeight) : 100;
     this.height = this.outerHeight - this.margin.top - this.margin.bottom;
     this.width = this.outerWidth - this.margin.left - this.margin.right;
     this.svg.attr("viewBox", "0 0 "+this.outerWidth+" "+this.outerHeight);
