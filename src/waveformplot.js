@@ -5,9 +5,10 @@
  * http://www.seis.sc.edu
  */
 
-import * as d3 from 'd3';
-import * as miniseed from 'seisplotjs-miniseed';
-import {createPlotsBySelectorPromise,
+import {
+    d3,
+    miniseed,
+    createPlotsBySelectorPromise,
     findStartEnd,
     findMinMax
   } from './util';
@@ -639,6 +640,9 @@ Seismograph._lastID = 0;
 const CLIP_PREFIX = "seismographclip";
 
 // backwards compatibility
+/**
+* @deprecated use Seismograph
+*/
 export class chart extends Seismograph {
   constructor(inSvgParent, inSegments, plotStartDate, plotEndDate) {
     super(inSvgParent, inSegments, plotStartDate, plotEndDate);

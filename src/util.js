@@ -25,6 +25,7 @@ export { dataselect, miniseed, d3, RSVP };
   *   stroke: skyblue;
   *   fill: none;
   * }<br/>
+  * @deprecated use seisplotjs-fdsndataselect to load data records
   */
 export function createPlotsBySelectorWithCallback(selector, callback) {
    createPlotsBySelectorPromise(selector)
@@ -136,6 +137,9 @@ export function calcStartEndDates(start, end, duration, clockOffset) {
   return dataselect.calcStartEndDates(start, end, duration, clockOffset);
 }
 
+/**
+* @deprecated use seisplotjs-fdsndataselect directly to create request
+*/
 export function formRequest(protocol, host, net, sta, loc, chan, startDate, endDate) {
   let dsQuery = new dataselect.DataSelectQuery()
       .protocol(protocol)
@@ -149,18 +153,27 @@ export function formRequest(protocol, host, net, sta, loc, chan, startDate, endD
   return dsQuery;
 }
 
+/**
+* @deprecated use seisplotjs-fdsndataselect to load data records
+*/
 export function formRequestUrl(protocol, host, net, sta, loc, chan, startDate, endDate) {
    return formRequest(protocol, host, net, sta, loc, chan, startDate, endDate).formURL();
 }
 
+/**
+* @deprecated use seisplotjs-fdsndataselect to load data records
+*/
 export function loadParseSplit(protocol, host, net, sta, loc, chan, startDate, endDate, callback) {
   let url = formRequestUrl(protocol, host, net, sta, loc, chan, startDate, endDate);
   loadParseSplitUrl(url, callback);
 }
 
 
-/** loads and parses data into an array of miniseed records */
+/** loads and parses data into an array of miniseed records
+ * @deprecated use seisplotjs-fdsndataselect to load data records
+ */
 export function loadParse(url, callback) {
+  console.warn("seisplotjs-waveformplot.loadParse is deprecated, use seisplotjs-fdsndataselect instead");
   d3.request(url)
     .mimeType("application/vnd.fdsn.mseed")
     .responseType("arraybuffer")
@@ -177,6 +190,9 @@ export function loadParse(url, callback) {
         });
 }
 
+/**
+* @deprecated use seisplotjs-fdsndataselect to load data records
+*/
 export function loadParseSplitUrl(url, callback) {
   loadParse(url, function(error, dataRecords) {
       if (error) {
