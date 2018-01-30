@@ -34,6 +34,7 @@ Create html with a div tag with the parameters and a class, in test.html. Also p
 </script>
 </body>
 </html>
+```
 
 You must set CSS stroke and fill for the path.seisplot elements
 in order for the seismogram to display properly. You may also want to set
