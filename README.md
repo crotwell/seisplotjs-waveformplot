@@ -28,7 +28,7 @@ Create html with a div tag with the parameters and a class, in test.html. Also p
 <!-- important that this script element is at the end so the DOM exists before it runs. -->
 <!-- older browsers ( and maybe current ones) may need to polyfill. -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-polyfill/6.26.0/polyfill.min.js"></script>
-<script src="https://github.com/crotwell/seisplotjs-waveformplot/releases/download/v1.2.3/seisplotjs-waveformplot-1.2.3_standalone.js"></script>
+<script src="http://www.seis.sc.edu/~crotwell/seisplotjs_demo/seisplotjs-waveformplot/example/seisplotjs_waveformplot_1.2.3_standalone.js"></script>
 <script>
     seisplotjs_waveformplot.createPlotsBySelector('div.myseisplot');
 </script>
