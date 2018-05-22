@@ -5,6 +5,10 @@ import {
 } from './waveformplot';
 
 import {
+  chooser
+} from './chooser';
+
+import {
   particleMotion,
   createParticleMotionBySelector
 } from './particleMotion';
@@ -44,5 +48,6 @@ export {
     loadParse,
     loadParseSplitUrl,
     findStartEnd,
-    findMinMax
+    findMinMax,
+    chooser
 };

@@ -4,8 +4,9 @@ import * as dataselect from 'seisplotjs-fdsndataselect';
 import * as miniseed from 'seisplotjs-miniseed';
 import * as d3 from 'd3';
 let RSVP = dataselect.RSVP;
+const moment = miniseed.model.moment;
 
-export { dataselect, miniseed, d3, RSVP };
+export { dataselect, miniseed, d3, RSVP, moment };
 
 /** deprecated - use createPlotsBySelectorPromise instead.
   *
