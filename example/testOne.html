@@ -3,6 +3,7 @@
 <head>
    <meta charset="utf-8" />
    <link rel="stylesheet" href="style.css">
+   <link rel="stylesheet" href="pikaday.css">
 </head>
 <body>
 
@@ -11,24 +12,74 @@
 
 <!--
 -->
-<h3>Plots of 360 seconds of CO.JSC.00.HHZ</h3>
+<h3>Plots of 360 seconds of CO.JSC.00.HH?</h3>
 
-<p>Three ways of specifying the time window, start and duration</p>
-<pre>
-&ltdiv class='myseisplot' net='CO' sta='JSC' loc='00' chan='HHZ' start='2016-09-19T20:00:00' duration='360'&gt
-&lt/div&gt
-</pre>
+<div class='chooser'>
+<p>Time range chooser</p>
+</div>
 
-<div xxxhref="jsc.mseed" class='myseisplot' net='CO' sta='JSC' loc='00' chan='HHZ' start='2016-09-19T20:00:00' duration='360'>
+<div class='myseisplot' >
 </div>
 
 
 <script src="polyfill.min.js"></script>
-<script src="seisplotjs_waveformplot_1.2.3_standalone.js"></script>
+<script src="seisplotjs_waveformplot_1.2.4-alpha.1_standalone.js"></script>
 <script>
-//var wp = require('seisplotjs-waveformplot');
 var wp = seisplotjs_waveformplot;
-wp.createPlotsBySelector('div.myseisplot')
+let seismogram;
+
+var timeChooser = wp.chooser.createTimeRangeChooser("div.chooser", function(timeRange) {
+  console.log("Update: "+timeRange.start.time.toISOString()+" "+timeRange.end.time.toISOString());
+if (timeRange.start.time.isBefore(timeRange.end.time)) {
+
+//fetch('jsc.mseed')
+    fetch('http://service.iris.edu/fdsnws/dataselect/1/query?net=CO&sta=TEEBA&loc=00&cha=LHZ&starttime='+timeRange.start.time.toISOString()+'&endtime='+timeRange.end.time.toISOString()+'&nodata=404')
+        .then(request => {
+          if (request.ok && request.status == 200) {
+            return request.arrayBuffer();
+          } else {
+            throw new Error("no data returned: "+request.status);
+          }
+        })
+        .then(arrayB => {
+          console.log("file loaded "+arrayB.byteLength);
+          let miniseed = wp.miniseed;
+          let dataRecords = [];
+          if (arrayB.byteLength > 0) {
+            dataRecords = miniseed.parseDataRecords(arrayB);
+          }
+          console.log("found "+dataRecords.length+" "+arrayB.byteLength);
+          let byChannel = miniseed.byChannel(dataRecords);
+          let keys = Array.from(byChannel.keys());
+          let segments = [];
+          for(let i=0; i<keys.length; i++) {
+            let key = keys[i];
+            segments.push(miniseed.merge(byChannel.get(key)));
+          }
+          let svgParent = wp.d3.select("div.myseisplot");
+          if (segments.length > 0) {
+            let s = segments[0];
+            let svgDiv = svgParent.append("div");
+            let startDate = null;
+            let endDate = null;
+            svgDiv.classed("svg-container-wide", true);
+            if ( ! seismogram) {
+              seismogram = new wp.Seismograph(svgDiv, s, timeRange.start.time, timeRange.end.time);
+            } else {
+              seismogram.setPlotStart(timeRange.start.time)
+                .setPlotEnd(timeRange.end.time)
+              seismogram.append(s);//append first one
+            }
+            for ( let i=1; i< segments.length; i++) {
+              seismogram.append(segments[i]);
+            }
+            seismogram.draw();
+          } else {
+            svgParent.append('p').text("No Data");
+          }
+        });
+      }
+    });
 </script>
 </body>
 </html>

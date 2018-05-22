@@ -17,6 +17,13 @@ path.seispath {
   stroke-width: 1px;
 }
 
+input.pikaday {
+  width: 70px;
+}
+input.pikatime {
+  width: 50px;
+}
+
 /* Responsive SVG */
 .svg-container-square {
     display: inline-block;
