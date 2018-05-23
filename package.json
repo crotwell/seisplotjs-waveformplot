@@ -12,9 +12,9 @@
   "scripts": {
     "lint": "eslint 'src/*.js'",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "copycss": "copyup src/*.css lib",
-    "compile": "babel  -d lib/ src/ && npm run copycss",
-    "standalone": "browserify src/index.js --standalone seisplotjs_waveformplot -o seisplotjs_waveformplot_${npm_package_version}_standalone.js -t [ babelify --presets [ env ] ] -t [ browserify-css --minify=true --insertAt=top ]",
+    "injectcss": "browserify -t [ browserify-css --minify=false --insertAt=top ] css/inject_css.js -o src/inject_css.js",
+    "compile": "npm run injectcss && babel  -d lib/ src/  --copy-files",
+    "standalone": "npm run injectcss && browserify src/index.js --ignore-missing --standalone seisplotjs_waveformplot -o seisplotjs_waveformplot_${npm_package_version}_standalone.js -t [ babelify --presets [ env ] ]",
     "prepare": "npm run compile"
   },
   "repository": {

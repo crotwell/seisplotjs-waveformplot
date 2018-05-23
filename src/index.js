@@ -1,6 +1,7 @@
 
+
 // for browserify-css
-let default_css = require('./seisplotjs-waveformplot.css');
+import './inject_css';
 
 import {
   createPlotsBySelector,
