@@ -2,8 +2,6 @@
 <html lang="en">
 <head>
    <meta charset="utf-8" />
-   <link rel="stylesheet" href="style.css">
-   <link rel="stylesheet" href="pikaday.css">
 </head>
 <body>
 
@@ -26,7 +24,7 @@
 <script src="seisplotjs_waveformplot_1.2.4-alpha.1_standalone.js"></script>
 <script>
 var wp = seisplotjs_waveformplot;
-let seismogram;
+let seismograph;
 
 var timeChooser = wp.chooser.createTimeRangeChooser("div.chooser", function(timeRange) {
   console.log("Update: "+timeRange.start.time.toISOString()+" "+timeRange.end.time.toISOString());
@@ -63,17 +61,17 @@ if (timeRange.start.time.isBefore(timeRange.end.time)) {
             let startDate = null;
             let endDate = null;
             svgDiv.classed("svg-container-wide", true);
-            if ( ! seismogram) {
-              seismogram = new wp.Seismograph(svgDiv, s, timeRange.start.time, timeRange.end.time);
+            if ( ! seismograph) {
+              seismograph = new wp.Seismograph(svgDiv, s, timeRange.start.time, timeRange.end.time);
             } else {
-              seismogram.setPlotStart(timeRange.start.time)
+              seismograph.setPlotStart(timeRange.start.time)
                 .setPlotEnd(timeRange.end.time)
-              seismogram.append(s);//append first one
+              seismograph.append(s);//append first one
             }
             for ( let i=1; i< segments.length; i++) {
-              seismogram.append(segments[i]);
+              seismograph.append(segments[i]);
             }
-            seismogram.draw();
+            seismograph.draw();
           } else {
             svgParent.append('p').text("No Data");
           }

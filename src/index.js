@@ -1,3 +1,7 @@
+
+// for browserify-css
+let default_css = require('./seisplotjs-waveformplot.css');
+
 import {
   createPlotsBySelector,
   Seismograph,
