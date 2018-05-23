@@ -611,6 +611,7 @@ export class Seismograph {
       this.segments.push(seismogram);
     }
   }
+  /** appends the seismogram(s) as separate time series. */
   append(seismogram) {
     this._internalAppend(seismogram);
     this.calcScaleDomain();
