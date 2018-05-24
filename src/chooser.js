@@ -52,7 +52,6 @@ export class HourMinChooser {
   }
   updateTime(newTime) {
     this.time = newTime;
-    console.log("HourMinChooser updateTime: "+newTime.toISOString());
     this.hourMinField.attr("value", this.time.format('HH:mm'));
     this.hourSlider.attr("value", this.time.hour());
     this.hourSpan.text(this.time.hour());
@@ -60,7 +59,6 @@ export class HourMinChooser {
     this.minuteSpan.text(this.time.minute());
   }
   timeModified() {
-    console.log("timeModified: "+this.time.toISOString());
     this.hourSlider.attr("value", this.time.hour());
     this.minuteSlider.attr("value", this.time.minute());
     this.hourMinField.attr("value", this.time.format('HH:mm'));
@@ -75,7 +73,6 @@ export class DateTimeChooser {
     this.time = moment.utc(initialTime);
     this.time.second(0).millisecond(0); // only hour and min?
     this.updateCallback = updateCallback;
-    console.log("createTimeChooser: "+this.label+" "+this.time.toISOString());
     this.dateField = div.append("label").text(this.label).append("input")
       .classed("pikaday", true)
       .attr("value", this.time.toISOString())
@@ -101,7 +98,6 @@ export class DateTimeChooser {
     });
   }
   updateTime(newTime) {
-    console.log("DateTimeChooser updateTime: "+newTime.toISOString());
     this._internalSetTime(newTime);
     this.hourMin.updateTime(newTime);
   }
@@ -128,7 +124,7 @@ export class TimeRangeChooser {
     let mythis = this;
     let startDiv = div.append("div").classed("start", true);
     this.startChooser = new DateTimeChooser(startDiv, "Start:", startTime, function(startTime) {
-      console.log("start -> endChooser updateTime: "+startTime.toISOString()+" plus "+mythis.duration);
+      // console.log("start -> endChooser updateTime: "+startTime.toISOString()+" plus "+mythis.duration);
       mythis.endChooser.updateTime(moment.utc(startTime).add(mythis.duration, 'seconds'));
       mythis.callbackFunction(mythis.getTimeRange());
     });
@@ -141,14 +137,14 @@ export class TimeRangeChooser {
       .on("input", function() {
         let nDur = +Number.parseInt(this.value);
         mythis.duration = nDur;
-          console.log("dur -> startChooser updateTime: "+mythis.endChooser.getTime().toISOString()+" minus "+mythis.duration);
+        // console.log("dur -> startChooser updateTime: "+mythis.endChooser.getTime().toISOString()+" minus "+mythis.duration);
         mythis.startChooser.updateTime(moment.utc(mythis.endChooser.getTime()).subtract(mythis.duration, 'seconds'));
         mythis.callbackFunction(mythis.getTimeRange());
       });
 
     let endDiv = div.append("div").classed("end", true);
     this.endChooser = new DateTimeChooser(endDiv, "End:", endTime, function(endTime) {
-      console.log("end -> startChooser updateTime: "+endTime.toISOString()+" minus "+mythis.duration);
+      // console.log("end -> startChooser updateTime: "+endTime.toISOString()+" minus "+mythis.duration);
       mythis.startChooser.updateTime(moment.utc(endTime).subtract(mythis.duration, 'seconds'));
       mythis.callbackFunction(mythis.getTimeRange());
     });
