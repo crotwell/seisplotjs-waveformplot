@@ -4,7 +4,7 @@
   "description": "Plotting seismic data in miniseed format using d3.",
   "main": "./lib/index.js",
   "dependencies": {
-    "d3": "^4.12.2",
+    "d3": "^5.4.0",
     "pikaday": "^1.7.0",
     "seisplotjs-fdsndataselect": "^1.1.2",
     "seisplotjs-miniseed": "^1.2.0"
