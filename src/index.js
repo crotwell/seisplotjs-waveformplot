@@ -9,9 +9,7 @@ import {
   chart
 } from './waveformplot';
 
-import {
-  chooser
-} from './chooser';
+import * as chooser from './chooser';
 
 import {
   particleMotion,

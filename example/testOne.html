@@ -25,13 +25,22 @@
 <script>
 var wp = seisplotjs_waveformplot;
 let seismograph;
+let div = wp.d3.select("div.chooser");
+var timeChooser = new wp.chooser.TimeRangeChooser(div, function(timeRange) {
+  console.log("Update: "+timeRange.start.toISOString()+" "+timeRange.end.toISOString());
+});
 
-var timeChooser = wp.chooser.createTimeRangeChooser("div.chooser", function(timeRange) {
-  console.log("Update: "+timeRange.start.time.toISOString()+" "+timeRange.end.time.toISOString());
-if (timeRange.start.time.isBefore(timeRange.end.time)) {
 
-//fetch('jsc.mseed')
-    fetch('http://service.iris.edu/fdsnws/dataselect/1/query?net=CO&sta=TEEBA&loc=00&cha=LHZ&starttime='+timeRange.start.time.toISOString()+'&endtime='+timeRange.end.time.toISOString()+'&nodata=404')
+let buttonDiv = div.append("div");
+buttonDiv.append("button")
+.text("Update")
+.on("click", function() {
+  let timeRange = timeChooser.getTimeRange();
+  console.log("Update: "+timeRange.start.toISOString()+" "+timeRange.end.toISOString());
+  if (timeRange.start.isBefore(timeRange.end)) {
+
+    //fetch('jsc.mseed')
+    fetch('http://service.iris.edu/fdsnws/dataselect/1/query?net=CO&sta=TEEBA&loc=00&cha=LHZ&starttime='+timeRange.start.toISOString()+'&endtime='+timeRange.end.toISOString()+'&nodata=404')
         .then(request => {
           if (request.ok && request.status == 200) {
             return request.arrayBuffer();
@@ -62,10 +71,10 @@ if (timeRange.start.time.isBefore(timeRange.end.time)) {
             let endDate = null;
             svgDiv.classed("svg-container-wide", true);
             if ( ! seismograph) {
-              seismograph = new wp.Seismograph(svgDiv, s, timeRange.start.time, timeRange.end.time);
+              seismograph = new wp.Seismograph(svgDiv, s, timeRange.start, timeRange.end);
             } else {
-              seismograph.setPlotStart(timeRange.start.time)
-                .setPlotEnd(timeRange.end.time)
+              seismograph.setPlotStart(timeRange.start)
+                .setPlotEnd(timeRange.end)
               seismograph.append(s);//append first one
             }
             for ( let i=1; i< segments.length; i++) {
@@ -76,8 +85,10 @@ if (timeRange.start.time.isBefore(timeRange.end.time)) {
             svgParent.append('p').text("No Data");
           }
         });
+      } else {
+        throw new Error("Start after end!");
       }
-    });
+  });
 </script>
 </body>
 </html>
