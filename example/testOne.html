@@ -2,6 +2,9 @@
 <html lang="en">
 <head>
    <meta charset="utf-8" />
+  <!--
+  <link rel="stylesheet" href="style.css">
+  -->
 </head>
 <body>
 
@@ -12,8 +15,7 @@
 -->
 <h3>Plots of 360 seconds of CO.JSC.00.HH?</h3>
 
-<div class='chooser'>
-<p>Time range chooser</p>
+<div class='timeRangeChooser'>
 </div>
 
 <div class='myseisplot' >
@@ -25,7 +27,7 @@
 <script>
 var wp = seisplotjs_waveformplot;
 let seismograph;
-let div = wp.d3.select("div.chooser");
+let div = wp.d3.select("div.timeRangeChooser");
 var timeChooser = new wp.chooser.TimeRangeChooser(div, function(timeRange) {
   console.log("Update: "+timeRange.start.toISOString()+" "+timeRange.end.toISOString());
 });
