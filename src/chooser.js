@@ -8,17 +8,55 @@ import {
 
 export class HourMinChooser {
   constructor(div, time, updateCallback) {
+    let mythis = this;
     this.div = div;
     this.time = time;
     this.updateCallback = updateCallback;
+    this.hourMinRegEx = /^([0-1]?[0-9]):([0-5]?[0-9])$/;
+    this.myOnClick = function(e) {
+      // click document outside popup closes popup
+      // not sure this if matters???
+          if (e.target !== mythis.hourMinField && e.target !== mythis.popupDiv) {
+            mythis.hide();
+          } else {
+            console.log("target outside popup");
+          }
+    };
     this.hourMinField = this.div.append("input")
       .classed("pikatime", true)
       .attr("value", this.time.format('HH:mm'))
-      .attr("type", "text");
-    this.hourDiv = this.div.append("div.hour");
+      .attr("type", "text")
+      .on("click", function() {
+        mythis.showHide();
+        // don't propagate click up to document
+        d3.event.stopPropagation();
+      })
+      .on("change", function() {
+        let match = mythis.hourMinRegEx.exec(mythis.hourMinField.property("value"));
+        if (match) {
+          mythis.hourMinField.style("background-color", null);
+          let h = match[1];
+          let m = match[2];
+          mythis.time.hours(h);
+          mythis.time.minutes(m);
+          mythis.popupDiv.style("visibility", "hidden");
+          mythis.timeModified();
+        } else {
+          mythis.hourMinField.property("value", mythis.time.format('HH:mm'));
+        }
+
+      });
+    this.popupDiv = this.div.append("div")
+      .classed("hourminpopup", true)
+      .style("position", "absolute")
+      .style("visibility", "hidden")
+      .on("click", function() {
+        // don't propagate click up to document
+        d3.event.stopPropagation();
+      });
+    this.hourDiv = this.popupDiv.append("div.hour");
     this.hourSpan = this.hourDiv.append("span").classed("hour", true).text(this.time.hour());
-    this.hourSlider = this.hourDiv.append("input");
-    let mythis = this;
+    this.hourSlider = this.hourDiv.append("label").text("Hour:").append("input");
     this.hourSlider.attr("type", "range")
       .attr("min","0")
       .attr("max", "23")
@@ -33,8 +71,9 @@ export class HourMinChooser {
         }
       });
     this.hourSlider.attr("value", this.time.hour());
-    this.minuteSpan = this.hourDiv.append("span").classed("minute", true).text(this.time.minute());
-    this.minuteSlider = this.div.append("input");
+    this.minuteDiv = this.popupDiv.append("div.minute");
+    this.minuteSpan = this.minuteDiv.append("span").classed("minute", true).text(this.time.minute());
+    this.minuteSlider = this.minuteDiv.append("label").text("Minute:").append("input");
     this.minuteSlider.attr("type", "range")
       .attr("min","0")
       .attr("max", "59")
@@ -52,17 +91,60 @@ export class HourMinChooser {
   }
   updateTime(newTime) {
     this.time = newTime;
-    this.hourMinField.attr("value", this.time.format('HH:mm'));
-    this.hourSlider.attr("value", this.time.hour());
+    this.hourMinField.property("value", this.time.format('HH:mm'));
+    this.hourSlider.property("value", this.time.hour());
     this.hourSpan.text(this.time.hour());
-    this.minuteSlider.attr("value", this.time.minute());
+    this.minuteSlider.property("value", this.time.minute());
     this.minuteSpan.text(this.time.minute());
   }
   timeModified() {
-    this.hourSlider.attr("value", this.time.hour());
-    this.minuteSlider.attr("value", this.time.minute());
-    this.hourMinField.attr("value", this.time.format('HH:mm'));
+    this.hourSlider.property("value", this.time.hour());
+    this.hourSpan.text(this.time.hour());
+    this.minuteSlider.property("value", this.time.minute());
+    this.minuteSpan.text(this.time.minute());
+    this.hourMinField.property("value", this.time.format('HH:mm'));
     this.updateCallback(this.time);
+  }
+  showHide() {
+    if (this.popupDiv.style("visibility") == "hidden") {
+      this.popupDiv.style("visibility", "visible");
+      window.document.addEventListener("click", this.myOnClick, false);
+    } else {
+      this.popupDiv.style("visibility", "hidden");
+      window.document.removeEventListener("click", this.myOnClick);
+    }
+  }
+  hide() {
+    this.popupDiv.style("visibility", "hidden");
+    window.document.removeEventListener("click", this.myOnClick);
+  }
+  _adjustPopupPosition() {
+
+      let field = this.hourMinField;
+      let width = this.hourMinField.offsetWidth;
+      let height = this.hourMinField.offsetHeight;
+      let viewportWidth = window.innerWidth || document.documentElement.clientWidth;
+      let viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+      let scrollTop = window.pageYOffset || document.body.scrollTop || document.documentElement.scrollTop;
+
+      let left = field.offsetLeft;
+      let top  = field.offsetTop + field.offsetHeight;
+      while((field = field.offsetParent)) {
+          left += field.offsetLeft;
+          top  += field.offsetTop;
+      }
+
+
+      // default position is bottom & left
+      if ((left + width > viewportWidth)) {
+          left = left - width + field.offsetWidth;
+      }
+      if ((top + height > viewportHeight + scrollTop)) {
+          top = top - height - field.offsetHeight;
+      }
+
+      this.popupDiv.style("left", left + 'px');
+      this.popupDiv.style("top", top + 'px');
   }
 }
 
@@ -76,7 +158,12 @@ export class DateTimeChooser {
     this.dateField = div.append("label").text(this.label).append("input")
       .classed("pikaday", true)
       .attr("value", this.time.toISOString())
-      .attr("type", "text");
+      .attr("type", "text")
+      .on("click", function() {
+        if (mythis.picker.isVisible()) {
+          mythis.picker.hide();
+        }
+      });
     let mythis = this;
     this.picker = new Pikaday({ field: this.dateField.node(),
                               //  trigger: inputField.node(),
@@ -121,6 +208,7 @@ export class TimeRangeChooser {
     this.duration = 300;
     let startTime = moment.utc(endTime).subtract(this.duration, 'second');
     this.div = div;
+    this.div.classed("timeRangeChooser", true);
     let mythis = this;
     let startDiv = div.append("div").classed("start", true);
     this.startChooser = new DateTimeChooser(startDiv, "Start:", startTime, function(startTime) {
