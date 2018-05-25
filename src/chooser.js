@@ -54,7 +54,7 @@ export class HourMinChooser {
         // don't propagate click up to document
         d3.event.stopPropagation();
       });
-    this.hourDiv = this.popupDiv.append("div.hour");
+    this.hourDiv = this.popupDiv.append("div").classed("hour", true);
     this.hourSpan = this.hourDiv.append("span").classed("hour", true).text(this.time.hour());
     this.hourSlider = this.hourDiv.append("label").text("Hour:").append("input");
     this.hourSlider.attr("type", "range")
@@ -71,7 +71,7 @@ export class HourMinChooser {
         }
       });
     this.hourSlider.attr("value", this.time.hour());
-    this.minuteDiv = this.popupDiv.append("div.minute");
+    this.minuteDiv = this.popupDiv.append("div").classed("minute", true);
     this.minuteSpan = this.minuteDiv.append("span").classed("minute", true).text(this.time.minute());
     this.minuteSlider = this.minuteDiv.append("label").text("Minute:").append("input");
     this.minuteSlider.attr("type", "range")
