@@ -18,8 +18,6 @@ export class HourMinChooser {
       // not sure this if matters???
           if (e.target !== mythis.hourMinField && e.target !== mythis.popupDiv) {
             mythis.hide();
-          } else {
-            console.log("target outside popup");
           }
     };
     this.hourMinField = this.div.append("input")
@@ -46,6 +44,7 @@ export class HourMinChooser {
         }
 
       });
+    this.div.append("span").text("UTC");
     this.popupDiv = this.div.append("div")
       .classed("hourminpopup", true)
       .style("position", "absolute")
@@ -55,7 +54,6 @@ export class HourMinChooser {
         d3.event.stopPropagation();
       });
     this.hourDiv = this.popupDiv.append("div").classed("hour", true);
-    this.hourSpan = this.hourDiv.append("span").classed("hour", true).text(this.time.hour());
     this.hourSlider = this.hourDiv.append("label").text("Hour:").append("input");
     this.hourSlider.attr("type", "range")
       .attr("min","0")
@@ -66,13 +64,11 @@ export class HourMinChooser {
         if (mythis.time.hours() != nHour) {
           mythis.time.hours(nHour);
           mythis.hourSlider.property("value", nHour);
-          mythis.hourSpan.text(nHour);
           mythis.timeModified();
         }
       });
     this.hourSlider.attr("value", this.time.hour());
     this.minuteDiv = this.popupDiv.append("div").classed("minute", true);
-    this.minuteSpan = this.minuteDiv.append("span").classed("minute", true).text(this.time.minute());
     this.minuteSlider = this.minuteDiv.append("label").text("Minute:").append("input");
     this.minuteSlider.attr("type", "range")
       .attr("min","0")
@@ -83,7 +79,6 @@ export class HourMinChooser {
         if (mythis.time.minutes() != nMinute) {
           mythis.time.minutes(nMinute);
           mythis.minuteSlider.property("value", nMinute);
-          mythis.minuteSpan.text(nMinute);
           mythis.timeModified();
         }
       });
@@ -93,15 +88,11 @@ export class HourMinChooser {
     this.time = newTime;
     this.hourMinField.property("value", this.time.format('HH:mm'));
     this.hourSlider.property("value", this.time.hour());
-    this.hourSpan.text(this.time.hour());
     this.minuteSlider.property("value", this.time.minute());
-    this.minuteSpan.text(this.time.minute());
   }
   timeModified() {
     this.hourSlider.property("value", this.time.hour());
-    this.hourSpan.text(this.time.hour());
     this.minuteSlider.property("value", this.time.minute());
-    this.minuteSpan.text(this.time.minute());
     this.hourMinField.property("value", this.time.format('HH:mm'));
     this.updateCallback(this.time);
   }
@@ -178,7 +169,7 @@ export class DateTimeChooser {
                                   }
                                 }
                             });
-    this.picker.setMoment(this.time);
+    this._internalSetTime(this.time);
     this.hourMin = new HourMinChooser(div, this.time, function(time) {
       mythis._internalSetTime(time);
       mythis.timeModified(time);
@@ -197,7 +188,8 @@ export class DateTimeChooser {
   _internalSetTime(newTime) {
     this.time = newTime;
     this.dateField.attr("value", this.time.toISOString());
-    this.picker.setMoment(this.time);
+    // re-moment to avoid utc issue in
+    this.picker.setMoment(moment([this.time.year(), this.time.month(), this.time.date()]));
   }
 }
 
