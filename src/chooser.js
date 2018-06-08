@@ -1,3 +1,6 @@
+// @flow
+
+/* global document */
 
 import Pikaday from 'pikaday';
 
@@ -7,7 +10,19 @@ import {
 } from './util';
 
 export class HourMinChooser {
-  constructor(div, time, updateCallback) {
+  
+  div: any; // d3 not yet in flow-typed :(
+  time: moment;
+  updateCallback: ( time :moment) => void;
+  hourMinRegEx: RegExp;
+  myOnClick: (event :Event) => void;
+  hourMinField: any; // d3 not yet in flow-typed :(
+  popupDiv: any; // d3 not yet in flow-typed :(
+  hourDiv: any; // d3 not yet in flow-typed :(
+  hourSlider: any; // d3 not yet in flow-typed :(
+  minuteDiv: any; // d3 not yet in flow-typed :(
+  minuteSlider: any; // d3 not yet in flow-typed :(
+  constructor(div :any, time :moment, updateCallback :( time :moment) => void) {
     let mythis = this;
     this.div = div;
     this.time = time;
@@ -84,19 +99,19 @@ export class HourMinChooser {
       });
     this.minuteSlider.attr("value", time.minute());
   }
-  updateTime(newTime) {
+  updateTime(newTime :moment) :void {
     this.time = newTime;
     this.hourMinField.property("value", this.time.format('HH:mm'));
     this.hourSlider.property("value", this.time.hour());
     this.minuteSlider.property("value", this.time.minute());
   }
-  timeModified() {
+  timeModified() :void {
     this.hourSlider.property("value", this.time.hour());
     this.minuteSlider.property("value", this.time.minute());
     this.hourMinField.property("value", this.time.format('HH:mm'));
     this.updateCallback(this.time);
   }
-  showHide() {
+  showHide() :void {
     if (this.popupDiv.style("visibility") == "hidden") {
       this.popupDiv.style("visibility", "visible");
       window.document.addEventListener("click", this.myOnClick, false);
@@ -105,11 +120,11 @@ export class HourMinChooser {
       window.document.removeEventListener("click", this.myOnClick);
     }
   }
-  hide() {
+  hide() :void {
     this.popupDiv.style("visibility", "hidden");
     window.document.removeEventListener("click", this.myOnClick);
   }
-  _adjustPopupPosition() {
+  _adjustPopupPosition() :void {
 
       let field = this.hourMinField;
       let width = this.hourMinField.offsetWidth;
@@ -140,7 +155,14 @@ export class HourMinChooser {
 }
 
 export class DateTimeChooser {
-  constructor(div, label, initialTime, updateCallback) {
+  div: any; // d3 not yet in flow-typed :(
+  time: moment;
+  updateCallback: ( time :moment) => void;
+  label: string;
+  dateField: any;
+  picker: Pikaday;
+  hourMin: HourMinChooser;
+  constructor(div: any, label: string, initialTime :moment, updateCallback: ( time :moment) => void) {
     this.div = div;
     this.label = label;
     this.time = moment.utc(initialTime);
@@ -172,20 +194,20 @@ export class DateTimeChooser {
     this._internalSetTime(this.time);
     this.hourMin = new HourMinChooser(div, this.time, function(time) {
       mythis._internalSetTime(time);
-      mythis.timeModified(time);
+      mythis.timeModified();
     });
   }
-  updateTime(newTime) {
+  updateTime(newTime :moment) :void {
     this._internalSetTime(newTime);
     this.hourMin.updateTime(newTime);
   }
-  timeModified() {
+  timeModified() :void {
     this.updateCallback(this.time);
   }
-  getTime() {
+  getTime() :moment {
     return this.time;
   }
-  _internalSetTime(newTime) {
+  _internalSetTime(newTime :moment) :void {
     this.time = newTime;
     this.dateField.attr("value", this.time.toISOString());
     // re-moment to avoid utc issue in
@@ -193,8 +215,19 @@ export class DateTimeChooser {
   }
 }
 
+export type TimeRangeType = {
+  duration: number,
+  start: moment,
+  end: moment
+};
+
 export class TimeRangeChooser {
-  constructor(div, callbackFunction) {
+  div :any;
+  callbackFunction: (timerange : TimeRangeType) => void;
+  duration: number;
+  startChooser: DateTimeChooser;
+  endChooser: DateTimeChooser;
+  constructor(div :any, callbackFunction: (timerange : TimeRangeType) => void) {
     this.callbackFunction = callbackFunction;
     let endTime = moment.utc();
     this.duration = 300;
@@ -229,7 +262,7 @@ export class TimeRangeChooser {
       mythis.callbackFunction(mythis.getTimeRange());
     });
   }
-  getTimeRange() {
+  getTimeRange() :TimeRangeType {
     return {
       'start': this.startChooser.getTime(),
       'duration': this.duration,

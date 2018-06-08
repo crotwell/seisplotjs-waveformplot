@@ -1,12 +1,16 @@
-
+// @flow
 
 import {
     d3,
+    miniseed,
     createPlotsBySelectorPromise,
     findMinMax
   } from './util';
 
-export function createParticleMotionBySelector(selector) {
+const moment = miniseed.model.moment;
+import type { MarginType } from './waveformplot';
+
+export function createParticleMotionBySelector(selector: string) :void {
     createPlotsBySelectorPromise(selector)
     .then(function(resultArray) {
       resultArray.forEach(function(result) {
@@ -24,7 +28,7 @@ export function createParticleMotionBySelector(selector) {
     });
   }
 
-function addDivForParticleMotion(sa, sb, svgParent, startDate, endDate) {
+function addDivForParticleMotion(sa: Array<miniseed.model.Seismogram>, sb: Array<miniseed.model.Seismogram>, svgParent: any, startDate: moment, endDate: moment) :void {
   svgParent.append("h5").text(sa[0].chanCode()+" "+sb[0].chanCode());
   let svgDiv = svgParent.append("div");
   svgDiv.classed(sa[0].chanCode()+" "+sb[0].chanCode(), true);
@@ -37,7 +41,31 @@ function addDivForParticleMotion(sa, sb, svgParent, startDate, endDate) {
 
 /** Particle motion. */
 export class ParticleMotion {
-  constructor(inSvgParent, inSegments, plotStartDate, plotEndDate) {
+  //plotId: number;
+  segments: Array<miniseed.model.Seismogram>;
+  width: number;
+  height: number;
+  outerWidth: number;
+  outerHeight: number;
+  margin: MarginType;
+  title: string;
+  xLabel: string;
+  xSublabel: string;
+  yLabel: string;
+  ySublabel: string;
+  ySublabelTrans: number;
+  yScaleFormat: string | (value :number) => string;
+  xScale: any;
+  xScaleRmean: any;
+  xAxis: any;
+  yScale: any;
+  yScaleRmean: any;
+  yAxis: any;
+  svg: any;
+  svgParent: any;
+  g: any;
+//  static _lastID: number;
+  constructor(inSvgParent: any, inSegments: Array<miniseed.model.Seismogram>, plotStartDate: moment, plotEndDate: moment) :void {
     if (inSvgParent == null) {throw new Error("inSvgParent cannot be null");}
     if (inSegments.length != 2) {throw new Error("inSegments should be lenght 2 but was "+inSegments.length);}
     this.plotId = ++ParticleMotion._lastID;
@@ -77,10 +105,11 @@ export class ParticleMotion {
   draw() {
     this.checkResize();
     this.drawAxis(this.g);
-    this.drawAxisLabels(this.g);
+    this.drawAxisLabels();
     this.drawParticleMotion(this.segments[0], this.segments[1]);
+    return this;
   }
-  checkResize() {
+  checkResize(): boolean {
     let rect = this.svgParent.node().getBoundingClientRect();
     if (rect.width != this.outerWidth || rect.height != this.outerHeight) {
       this.setWidthHeight(rect.width, rect.height);
@@ -88,7 +117,7 @@ export class ParticleMotion {
     }
     return false;
   }
-  drawParticleMotion(segA, segB) {
+  drawParticleMotion(segA: miniseed.model.Seismogram, segB: miniseed.model.Seismogram) {
     let mythis = this;
     this.g.selectAll("g.particleMotion").remove();
     let lineG = this.g.append("g").classed("particleMotion", true);
@@ -104,7 +133,7 @@ export class ParticleMotion {
       .y((d,i) => mythis.yScale(segB.yAtIndex(i))));
   }
 
-  drawAxis(svgG) {
+  drawAxis(svgG: any) {
     svgG.selectAll("g.axis").remove();
     svgG.append("g")
         .attr("class", "axis axis--x")
@@ -120,12 +149,14 @@ export class ParticleMotion {
     this.setXSublabel(this.xSublabel);
     this.setYLabel(this.yLabel);
     this.setYSublabel(this.ySublabel);
+    return this;
   }
 
   rescaleAxis() {
     let delay = 500;
     this.g.select(".axis--y").transition().duration(delay/2).call(this.yAxis);
     this.g.select(".axis--x").transition().duration(delay/2).call(this.xAxis);
+    return this;
 }
 
   calcScaleDomain() {
@@ -138,9 +169,10 @@ export class ParticleMotion {
     niceMinMax = this.yScale.domain();
     this.yScaleRmean.domain([ (niceMinMax[0]-niceMinMax[1])/2, (niceMinMax[1]-niceMinMax[0])/2 ]);
     this.rescaleAxis();
+    return this;
   }
 
-  setWidthHeight(nOuterWidth, nOuterHeight) {
+  setWidthHeight(nOuterWidth: number, nOuterHeight: number) {
     this.outerWidth = nOuterWidth ? Math.max(100, nOuterWidth) : 100;
     this.outerHeight = nOuterHeight ? Math.max(100, nOuterHeight) : 100;
     this.height = this.outerHeight - this.margin.top - this.margin.bottom;
@@ -150,13 +182,12 @@ export class ParticleMotion {
     this.yScale.range([this.height, 0]);
     this.xScaleRmean.range([this.width, 0]);
     this.yScaleRmean.range([this.height, 0]);
+    return this;
   }
   /** Sets the title as simple string or array of strings. If an array
   then each item will be in a separate tspan for easier formatting.
   */
-  setTitle(value) {
-    if (!arguments.length)
-      return this.title;
+  setTitle(value: string) {
     this.title = value;
     this.svg.selectAll("g.title").remove();
     let titleSVGText = this.svg.append("g")
@@ -174,7 +205,7 @@ export class ParticleMotion {
     }
     return this;
   }
-  setXLabel(value) {
+  setXLabel(value: string) {
     if (!arguments.length)
       return this.xLabel;
     this.xLabel = value;
@@ -189,7 +220,7 @@ export class ParticleMotion {
     }
     return this;
   }
-  setYLabel(value) {
+  setYLabel(value: string) {
     if (!arguments.length)
       return this.yLabel;
     this.yLabel = value;
@@ -209,7 +240,7 @@ export class ParticleMotion {
      }
     return this;
   }
-  setXSublabel(value) {
+  setXSublabel(value: string) {
     if (!arguments.length)
       return this.xSublabel;
     this.xSublabel = value;
@@ -222,9 +253,7 @@ export class ParticleMotion {
        .text(this.xSublabel);
     return this;
   }
-  setYSublabel(value) {
-    if (!arguments.length)
-      return this.ySublabel;
+  setYSublabel(value: string)  {
     this.ySublabel = value;
     this.svg.selectAll('g.ySublabel').remove();
 

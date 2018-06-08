@@ -1,4 +1,4 @@
-
+// @flow
 
 import * as dataselect from 'seisplotjs-fdsndataselect';
 import * as miniseed from 'seisplotjs-miniseed';
@@ -28,18 +28,31 @@ export { dataselect, miniseed, d3, RSVP, moment };
   * }<br/>
   * @deprecated use seisplotjs-fdsndataselect to load data records
   */
-export function createPlotsBySelectorWithCallback(selector, callback) {
+export function createPlotsBySelectorWithCallback(selector :string, callback: ( error ?: Error, dataRecords ?: Array<miniseed.DataRecord>) => void) {
    createPlotsBySelectorPromise(selector)
-     .then(function(dataRecords) {
-       callback(null, dataRecords);
-     }).catch(function(error) {
-       callback(error, null);
+   .then(function(plotData: PlotDataType) {
+     return plotData.segments;
+   })
+     .then(function(dataRecords :Array<miniseed.DataRecord>) {
+       callback(undefined, dataRecords);
+     }).catch(function(error :Error) {
+       callback(error, undefined);
      });
 }
 
+export type PlotDataType = {
+  "segments": Array<Array<miniseed.model.Seismogram>>,
+  "startDate": moment,
+  "endDate": moment,
+  "request": dataselect.DataSelectQuery,
+  "svgParent": any,
+  "responseText": string,
+  "statusCode": number
+};
+
 /** Returns an array of Promises, one per selected element.
 */
-export function createPlotsBySelectorPromise(selector) {
+export function createPlotsBySelectorPromise(selector :string) :Promise<Array<PlotDataType>> {
   let clockOffset = 0; // should set from server
   let out = [];
   d3.selectAll(selector).each(function() {
@@ -47,6 +60,7 @@ export function createPlotsBySelectorPromise(selector) {
     let url;
     let start = svgParent.attr("start") ? svgParent.attr("start") : null;
     let end = svgParent.attr("end") ? svgParent.attr("end") : null;
+    console.log("start end attr: "+start+" "+end+" "+(typeof end));
     let duration = svgParent.attr("duration");
     let startDate = null;
     let endDate = null;
@@ -121,20 +135,20 @@ export function createPlotsBySelectorPromise(selector) {
   return RSVP.all(out);
 }
 
-export function calcClockOffset(serverTime) {
+export function calcClockOffset(serverTime :moment) {
   return dataselect.calcClockOffset(serverTime);
 }
 
 /**
 Any two of start, end and duration can be specified, or just duration which
 then assumes end is now.
-start and end are Date objects, duration is in seconds.
+start and end are Moment objects, duration is in seconds.
 clockOffset is the milliseconds that should be subtracted from the local time
  to get real world time, ie local - UTC
  or new Date().getTime() - serverDate.getTime()
  default is zero.
 */
-export function calcStartEndDates(start, end, duration, clockOffset) {
+export function calcStartEndDates(start?: moment, end?: moment, duration?: number, clockOffset?: number) {
   return dataselect.calcStartEndDates(start, end, duration, clockOffset);
 }
 
@@ -211,17 +225,24 @@ export function loadParseSplitUrl(url, callback) {
   });
 }
 
-export function findStartEnd(data, accumulator) {
+export type TimeWindow = {start: moment, end: moment};
+import type {TimeRangeType} from './chooser';
+
+export function findStartEnd(data: Array<miniseed.model.Seismogram> | miniseed.model.Seismogram, accumulator?: TimeRangeType) :TimeRangeType {
+    let out :TimeRangeType;
+    if ( ! accumulator) {
+      out = {start: moment.utc('2500-01-01'), end: moment.utc('1001-01-01'), duration: 0 };
+    } else {
+      out = accumulator;
+    }
     if ( Array.isArray(data)) {
        for(let i=0; i< data.length; i++) {
-         accumulator = findStartEnd(data[i], accumulator);
+         out = findStartEnd(data[i], out);
        }
     } else {
        // assume single segment object
-       let out = accumulator;
-       if ( ! accumulator) {
-         out = {};
-       }
+
+
        if ( ! accumulator || data.start() < accumulator.start) {
          out.start = data.start();
        }
@@ -230,10 +251,10 @@ export function findStartEnd(data, accumulator) {
        }
        accumulator = out;
     }
-    return accumulator;
+    return out;
   }
 
-export function findMinMax(data, minMaxAccumulator) {
+export function findMinMax(data: Array<miniseed.model.Seismogram> | miniseed.model.Seismogram, minMaxAccumulator ?: Array<number>) :Array<number> {
     if ( Array.isArray(data)) {
        for(let i=0; i< data.length; i++) {
          minMaxAccumulator = findMinMax(data[i], minMaxAccumulator);
@@ -242,5 +263,9 @@ export function findMinMax(data, minMaxAccumulator) {
        // assume single segment object
        minMaxAccumulator = miniseed.segmentMinMax(data, minMaxAccumulator);
     }
-    return minMaxAccumulator;
+    if (minMaxAccumulator) {
+      return minMaxAccumulator;
+    } else {
+      return [-1, 1];
+    }
   }

@@ -1,3 +1,5 @@
+// @flow
+
 /*global window*/
 /**
  * Philip Crotwell
@@ -13,11 +15,31 @@ import {
     findMinMax
   } from './util';
 
+import type { PlotDataType } from './util';
+import type { TimeRangeType } from './chooser';
+
 const moment = miniseed.model.moment;
 
-export function createPlotsBySelector(selector) {
+export type MarginType = {
+  top: number,
+  right: number,
+  bottom: number,
+  left: number
+};
+
+export type ScaleChangeListenerType = {
+  notifyScaleChange: (value : any) => void
+}
+
+export type MarkerType = {
+  name: string,
+  time: moment,
+  type: string
+}
+
+export function createPlotsBySelector(selector :string) {
   return createPlotsBySelectorPromise(selector).then(function(resultArray){
-    resultArray.forEach(function(result) {
+    resultArray.forEach(function(result :PlotDataType) {
       result.svgParent.append("p").text("Build plot");
         if (result.segments.length >0) {
           let s = result.segments[0];
@@ -30,7 +52,7 @@ export function createPlotsBySelector(selector) {
           seismogram.draw();
         } else {
           result.svgParent.append("p").text("No Data");
-          if (result.statusCode || result.statusText) {
+          if (result.statusCode || result.responseText) {
             result.svgParent.append("p").text(result.statusCode +" "+ result.responseText);
           }
         }
@@ -49,7 +71,45 @@ export function createPlotsBySelector(selector) {
   * in order to have the seismogram display.
   */
 export class Seismograph {
-  constructor(inSvgParent, inSegments, plotStartDate, plotEndDate) {
+  //static _lastID: number;
+  plotId: number;
+  beforeFirstDraw: boolean;
+  xScaleFormat: (date: Date) => string;
+  yScaleFormat: string | (value :number) => string;
+  title: string | Array<string>;
+  xLabel: string;
+  xSublabel: string;
+  yLabel: string;
+  ySublabel: string;
+  ySublabelTrans: number;
+  svgParent: any;
+  segments: Array<miniseed.model.Seismogram>;
+  markers: Array<MarkerType>;
+  markerTextOffset: number;
+  markerTextAngle: number;
+  width: number;
+  height: number;
+  outerWidth: number;
+  outerHeight: number;
+  margin: MarginType;
+  segmentDrawCompressedCutoff: number;//below this draw all points, above draw minmax
+  maxZoomPixelPerSample: number; // no zoom in past point of sample
+                                       // separated by pixels
+  scaleChangeListeners: Array<ScaleChangeListenerType>;
+  svg: any;
+  xScale: any;
+  origXScale: any;
+  currZoomXScale: any;
+  yScale: any;
+  yScaleRmean: any;
+  lineFunc: any;
+  zoom: any;
+  xAxis: any;
+  yAxis: any;
+  g: any;
+  throttleRescale: any;
+  throttleResize: any;
+  constructor(inSvgParent :any, inSegments: Array<miniseed.model.Seismogram>, plotStartDate :moment, plotEndDate :moment) {
     if (inSvgParent == null) {throw new Error("inSvgParent cannot be null");}
     this.plotId = ++Seismograph._lastID;
     this.beforeFirstDraw = true;
@@ -140,11 +200,11 @@ export class Seismograph {
 
   }
 
-  disableWheelZoom() {
+  disableWheelZoom() :void {
     this.svg.call(this.zoom).on("wheel.zoom", null);
   }
 
-  checkResize() {
+  checkResize() :boolean {
     let rect = this.svgParent.node().getBoundingClientRect();
     if (rect.width != this.outerWidth || rect.height != this.outerHeight) {
       this.setWidthHeight(rect.width, rect.height);
@@ -152,16 +212,16 @@ export class Seismograph {
     }
     return false;
   }
-  draw() {
+  draw() :void {
     this.beforeFirstDraw = false;
     this.checkResize();
     this.drawSegments(this.segments, this.g.select("g.allsegments"));
     this.drawAxis(this.g);
-    this.drawAxisLabels(this.svg);
+    this.drawAxisLabels();
     this.drawMarkers(this.markers, this.g.select("g.allmarkers"));
   }
 
-  calcScaleAndZoom() {
+  calcScaleAndZoom() :void {
     this.rescaleYAxis();
     this.zoom = d3.zoom()
           .translateExtent([[0, 0], [this.width, this.height]])
@@ -178,7 +238,7 @@ export class Seismograph {
             .attr("width", this.width)
             .attr("height", this.height);
   }
-  drawSegments(segments, svgG) {
+  drawSegments(segments: Array<miniseed.model.Seismogram>, svgG: any) :void {
     let drawG = svgG;
     let mythis = this;
 
@@ -202,13 +262,13 @@ export class Seismograph {
            });
   }
 
-  calcSecondsPerPixel(xScale) {
+  calcSecondsPerPixel(xScale :any) :number {
     let domain = xScale.domain(); // time so milliseconds
     let range = xScale.range(); // pixels
     return (domain[1].getTime()-domain[0].getTime())/1000 / (range[1]-range[0]);
   }
 
-  segmentDrawLine(seg, xScale) {
+  segmentDrawLine(seg: miniseed.model.Seismogram, xScale: any) :void {
     let secondsPerPixel = this.calcSecondsPerPixel(xScale);
     let samplesPerPixel = seg.sampleRate() * secondsPerPixel;
     this.lineFunc.x(function(d) { return xScale(d.time); });
@@ -249,7 +309,7 @@ export class Seismograph {
     }
   }
 
-  drawAxis(svgG) {
+  drawAxis(svgG: any) :void {
     svgG.selectAll("g.axis").remove();
     svgG.append("g")
         .attr("class", "axis axis--x")
@@ -261,7 +321,7 @@ export class Seismograph {
         .call(this.yAxis);
   }
 
-  rescaleYAxis() {
+  rescaleYAxis() :void {
     let delay = 500;
     let myThis = this;
     if (this.throttleRescale) {
@@ -274,7 +334,7 @@ export class Seismograph {
       }, delay);
   }
 
-  drawAxisLabels() {
+  drawAxisLabels() :void {
     this.setTitle(this.title);
     this.setXLabel(this.xLabel);
     this.setXSublabel(this.xSublabel);
@@ -282,20 +342,20 @@ export class Seismograph {
     this.setYSublabel(this.ySublabel);
   }
 
-  resetZoom() {
+  resetZoom() :void {
     let mythis = this;
     this.xScale = this.origXScale;
     mythis.redrawWithXScale(this.xScale);
   }
 
 
-  zoomed(mythis) {
+  zoomed(mythis :Seismograph) :void {
     let t = d3.event.transform;
     let xt = t.rescaleX(this.xScale);
     mythis.redrawWithXScale(xt);
   }
 
-  redrawWithXScale(xt) {
+  redrawWithXScale(xt :any) :void {
     this.currZoomXScale = xt;
     let mythis = this;
     this.g.selectAll(".segment").select("path")
@@ -303,12 +363,12 @@ export class Seismograph {
              return mythis.segmentDrawLine(seg, xt);
            });
     this.g.select("g.allmarkers").selectAll("g.marker")
-          .attr("transform", function(marker) {
+          .attr("transform", function(marker :MarkerType) {
             let textx = xt( marker.time);
             return  "translate("+textx+","+0+")";});
 
      this.g.select("g.allmarkers").selectAll("g.markertext")
-         .attr("transform", function(marker) {
+         .attr("transform", function(marker :MarkerType) {
            // shift up by this.markerTextOffset percentage
            let maxY = mythis.yScale.range()[0];
            let deltaY = mythis.yScale.range()[0]-mythis.yScale.range()[1];
@@ -316,7 +376,7 @@ export class Seismograph {
            return  "translate("+0+","+texty+") rotate("+mythis.markerTextAngle+")";});
 
      this.g.select("g.allmarkers").selectAll("path.markerpath")
-       .attr("d", function(marker) {
+       .attr("d", function(marker :MarkerType) {
          return d3.line()
            .x(function(d) {
              return 0; // g is translated so marker time is zero
@@ -328,7 +388,7 @@ export class Seismograph {
     this.scaleChangeListeners.forEach(l => l.notifyScaleChange(xt));
   }
 
-  drawMarkers(markers, markerG) {
+  drawMarkers(markers :Array<MarkerType>, markerG :any) {
     if ( ! markers) { markers = []; }
     // marker overlay
     let mythis = this;
@@ -409,7 +469,7 @@ export class Seismograph {
         });
   }
 
-  setWidthHeight(nOuterWidth, nOuterHeight) {
+  setWidthHeight(nOuterWidth: number, nOuterHeight: number) :void {
     this.outerWidth = nOuterWidth ? Math.max(200, nOuterWidth) : 200;
     this.outerHeight = nOuterHeight ? Math.max(100, nOuterHeight): 100;
     this.height = this.outerHeight - this.margin.top - this.margin.bottom;
@@ -427,7 +487,7 @@ export class Seismograph {
 
 
   // see http://blog.kevinchisholm.com/javascript/javascript-function-throttling/
-  throttle(func, delay){
+  throttle(func :() => void, delay: number) :void {
     if (this.throttleResize) {
       window.clearTimeout(this.throttleResize);
     }
@@ -437,17 +497,17 @@ export class Seismograph {
   resizeNeeded() {
     let myThis = this;
     this.throttle(function(){
-        myThis.resize();
+        myThis.draw();
     }, 250);
   }
 
-  setPlotStart(value) {
+  setPlotStart(value :moment) :Seismograph {
     return this.setPlotStartEnd(value, this.xScale.domain()[1]);
   }
-  setPlotEnd(value) {
+  setPlotEnd(value :moment) :Seismograph {
     return this.setPlotStartEnd(this.xScale.domain()[0], value);
   }
-  setPlotStartEnd(startDate, endDate) {
+  setPlotStartEnd(startDate :moment, endDate :moment) :Seismograph {
     const plotStart = (startDate instanceof Date) ? startDate : moment.utc(startDate).toDate();
     const plotEnd = (endDate instanceof Date) ? endDate : moment.utc(endDate).toDate();
     this.xScale.domain([ plotStart, plotEnd ]);
@@ -455,17 +515,17 @@ export class Seismograph {
     return this;
   }
 
-  setWidth(value) {
+  setWidth(value :number) :Seismograph {
     this.setWidthHeight(value, this.outerHeight);
     return this;
   }
 
-  setHeight(value) {
+  setHeight(value :number) :Seismograph {
     this.setWidthHeight(this.outerWidth, value);
     return this;
   }
 
-  setMargin(value) {
+  setMargin(value :MarginType ) :Seismograph {
     this.margin = value;
     this.setWidthHeight(this.outerWidth, this.outerHeight);
     this.g.attr("transform", "translate(" + this.margin.left + "," + this.margin.top + ")");
@@ -475,9 +535,7 @@ export class Seismograph {
   /** Sets the title as simple string or array of strings. If an array
   then each item will be in a separate tspan for easier formatting.
   */
-  setTitle(value) {
-    if (!arguments.length)
-      return this.title;
+  setTitle(value :string | Array<string>) :Seismograph {
     this.title = value;
     this.svg.selectAll("g.title").remove();
     let titleSVGText = this.svg.append("g")
@@ -495,9 +553,7 @@ export class Seismograph {
     }
     return this;
   }
-  setXLabel(value) {
-    if (!arguments.length)
-      return this.xLabel;
+  setXLabel(value :string) :Seismograph {
     this.xLabel = value;
     this.svg.selectAll("g.xLabel").remove();
     this.svg.append("g")
@@ -508,9 +564,7 @@ export class Seismograph {
        .text(this.xLabel);
     return this;
   }
-  setYLabel(value) {
-    if (!arguments.length)
-      return this.yLabel;
+  setYLabel(value :string) :Seismograph {
     this.yLabel = value;
     this.svg.selectAll('g.yLabel').remove();
     this.svg.append("g")
@@ -526,9 +580,7 @@ export class Seismograph {
        .text(this.yLabel);
     return this;
   }
-  setXSublabel(value) {
-    if (!arguments.length)
-      return this.xSublabel;
+  setXSublabel(value :string) :Seismograph {
     this.xSublabel = value;
     this.svg.selectAll('g.xSublabel').remove();
     this.svg.append("g")
@@ -539,9 +591,7 @@ export class Seismograph {
        .text(this.xSublabel);
     return this;
   }
-  setYSublabel(value) {
-    if (!arguments.length)
-      return this.ySublabel;
+  setYSublabel(value :string) :Seismograph {
     this.ySublabel = value;
     this.svg.selectAll('g.ySublabel').remove();
 
@@ -558,23 +608,25 @@ export class Seismograph {
        .text(this.ySublabel);
     return this;
   }
-  setTimeFormatter(formatter) {
+  setTimeFormatter(formatter: (date: Date) => string) :Seismograph {
     this.xScaleFormat = formatter;
     this.xAxis.tickFormat(this.xScaleFormat);
+    return this;
   }
-  setAmplitudeFormatter(formatter) {
+  setAmplitudeFormatter(formatter: (value :number) => string) :Seismograph {
     this.yScaleFormat = formatter;
     this.yAxis.tickFormat(this.yScaleFormat);
+    return this;
   }
-  clearMarkers() {
+  clearMarkers() :Seismograph {
     this.markers.length = 0; //set array length to zero deletes all
     this.drawMarkers(this.markers, this.g.select("g.allmarkers"));
     return this;
   }
-  getMarkers() {
+  getMarkers() :Array<MarkerType> {
     return this.markers;
   }
-  appendMarkers(value) {
+  appendMarkers(value: Array<MarkerType> | MarkerType) :Seismograph {
     if (Array.isArray(value)) {
       for( let m of value) {
         this.markers.push(m);
@@ -586,7 +638,7 @@ export class Seismograph {
     return this;
   }
 
-  calcScaleDomain() {
+  calcScaleDomain() :void {
     let minMax = findMinMax(this.segments);
     if (minMax[0] == minMax[1]) {
       // flatlined data, use -1, +1
@@ -599,20 +651,20 @@ export class Seismograph {
   }
 
   /** can append single seismogram segment or an array of segments. */
-  _internalAppend(seismogram) {
+  _internalAppend(seismogram: Array<miniseed.model.Seismogram> | miniseed.model.Seismogram) :void {
     if (Array.isArray(seismogram)) {
       for(let s of seismogram) {
         this._internalAppend(s);
       }
     } else {
       if ( ! seismogram.y) {
-        throw new Error("attempt to append array of array, but subseismogram doesn't have y: "+seismogram);
+        throw new Error("attempt to append array of array, but subseismogram doesn't have y: "+seismogram.toString());
       }
       this.segments.push(seismogram);
     }
   }
   /** appends the seismogram(s) as separate time series. */
-  append(seismogram) {
+  append(seismogram: Array<miniseed.model.Seismogram> | miniseed.model.Seismogram) {
     this._internalAppend(seismogram);
     this.calcScaleDomain();
     if ( ! this.beforeFirstDraw) {
@@ -623,7 +675,7 @@ export class Seismograph {
     return this;
   }
 
-  trim(timeWindow) {
+  trim(timeWindow: TimeRangeType) :void {
     if (this.segments) {
       this.segments = this.segments.filter(function(d) {
         return d.end().isAfter(timeWindow.start);
@@ -645,13 +697,13 @@ const CLIP_PREFIX = "seismographclip";
 * @deprecated use Seismograph
 */
 export class chart extends Seismograph {
-  constructor(inSvgParent, inSegments, plotStartDate, plotEndDate) {
+  constructor(inSvgParent: any, inSegments: Array<miniseed.model.Seismogram>, plotStartDate :moment, plotEndDate :moment) {
     super(inSvgParent, inSegments, plotStartDate, plotEndDate);
     console.warn("chart is deprecated, please use Seismograph");
   }
 }
 
-let formatMillisecond = d3.utcFormat(".%L"),
+const formatMillisecond = d3.utcFormat(".%L"),
     formatSecond = d3.utcFormat(":%S"),
     formatMinute = d3.utcFormat("%H:%M"),
     formatHour = d3.utcFormat("%H:%M"),
@@ -659,7 +711,7 @@ let formatMillisecond = d3.utcFormat(".%L"),
     formatMonth = d3.utcFormat("%Y/%m"),
     formatYear = d3.utcFormat("%Y");
 
-let multiFormatHour = function(date) {
+const multiFormatHour = function(date: Date) :string {
   return (d3.utcSecond(date) < date ? formatMillisecond
       : d3.utcMinute(date) < date ? formatSecond
       : d3.utcHour(date) < date ? formatMinute
