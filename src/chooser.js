@@ -10,7 +10,7 @@ import {
 } from './util';
 
 export class HourMinChooser {
-  
+
   div: any; // d3 not yet in flow-typed :(
   time: moment;
   updateCallback: ( time :moment) => void;
@@ -129,9 +129,9 @@ export class HourMinChooser {
       let field = this.hourMinField;
       let width = this.hourMinField.offsetWidth;
       let height = this.hourMinField.offsetHeight;
-      let viewportWidth = window.innerWidth || document.documentElement.clientWidth;
-      let viewportHeight = window.innerHeight || document.documentElement.clientHeight;
-      let scrollTop = window.pageYOffset || document.body.scrollTop || document.documentElement.scrollTop;
+      let viewportWidth :number = window.innerWidth;
+      let viewportHeight :number = window.innerHeight;
+      let scrollTop :number = window.pageYOffset;
 
       let left = field.offsetLeft;
       let top  = field.offsetTop + field.offsetHeight;
