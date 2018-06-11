@@ -71,7 +71,7 @@ export function createPlotsBySelector(selector :string) {
   * in order to have the seismogram display.
   */
 export class Seismograph {
-  //static _lastID: number;
+  static _lastID: number;
   plotId: number;
   beforeFirstDraw: boolean;
   xScaleFormat: (date: Date) => string;
@@ -303,7 +303,7 @@ export class Seismograph {
             highlowArray: highlow
         };
       }
-      return this.lineFunc(seg.highlow.highlowArray.map(function(d,i) {
+      return this.lineFunc(seg.highlow.highlowArray.map(function(d :number,i :number) {
         return {time: new Date(seg.start().valueOf()+1000*((Math.floor(i/2)+.5)*secondsPerPixel)), y: d };
       }));
     }

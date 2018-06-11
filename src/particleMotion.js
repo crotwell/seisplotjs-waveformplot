@@ -41,7 +41,7 @@ function addDivForParticleMotion(sa: Array<miniseed.model.Seismogram>, sb: Array
 
 /** Particle motion. */
 export class ParticleMotion {
-  //plotId: number;
+  plotId: number;
   segments: Array<miniseed.model.Seismogram>;
   width: number;
   height: number;
@@ -64,7 +64,7 @@ export class ParticleMotion {
   svg: any;
   svgParent: any;
   g: any;
-//  static _lastID: number;
+  static _lastID: number;
   constructor(inSvgParent: any, inSegments: Array<miniseed.model.Seismogram>, plotStartDate: moment, plotEndDate: moment) :void {
     if (inSvgParent == null) {throw new Error("inSvgParent cannot be null");}
     if (inSegments.length != 2) {throw new Error("inSegments should be lenght 2 but was "+inSegments.length);}
