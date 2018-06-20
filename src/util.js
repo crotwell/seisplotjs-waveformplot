@@ -189,8 +189,7 @@ export function loadParseSplit(protocol, host, net, sta, loc, chan, startDate, e
  */
 export function loadParse(url, callback) {
   console.warn("seisplotjs-waveformplot.loadParse is deprecated, use seisplotjs-fdsndataselect instead");
-  d3.request(url)
-    .mimeType("application/vnd.fdsn.mseed")
+  d3.buffer(url)
     .responseType("arraybuffer")
     .get(null,
         function(error, data) {
