@@ -135,6 +135,7 @@ export class Seismograph {
                                          // separated by pixels
 
     this.svg = inSvgParent.append("svg");
+    this.svg.classed("seismograph", true);
     this.svg.classed("svg-content-responsive", true);
     this.svg.attr("version", "1.1");
     this.svg.attr("preserveAspectRatio", "xMinYMin meet");
