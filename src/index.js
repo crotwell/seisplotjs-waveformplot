@@ -1,7 +1,7 @@
 
 
 // for browserify-css
-import './inject_css';
+import './inject_css_manual';
 
 import {
   createPlotsBySelector,
