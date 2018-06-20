@@ -4,22 +4,23 @@
   "description": "Plotting seismic data in miniseed format using d3.",
   "main": "./lib/index.js",
   "dependencies": {
-    "d3": "^5.4.0",
+    "d3": "^5.5.0",
     "pikaday": "^1.7.0",
-    "seisplotjs-fdsndataselect": "^1.1.3-alpha.1",
-    "seisplotjs-miniseed": "^1.2.1-alpha.1"
+    "seisplotjs-fdsndataselect": "^1.1.3",
+    "seisplotjs-miniseed": "^1.2.1"
   },
   "scripts": {
     "lint": "eslint 'src/*.js'",
-    "injectcss": "browserify -t [ browserify-css --minify=false --insertAt=top ] css/inject_css.js -o src/inject_css.js",
+    "browserifycss": "browserify -t [ browserify-css --minify=false --insertAt=top ] css/inject_css.js -o src/inject_css.js",
+    "injectcss": "echo \"Error: do css to js manually for now...\" && exit 1",
     "test": "jest",
     "doc": "documentation build src/seedlink.js src/datalink.js src/ringserver-web.js src/util.js --github -o docs -f html --document-exported ",
     "flow": "flow",
     "flow-copy": "flow-copy-source -v -i '**/__tests__/**' src lib",
     "build:clean": "rimraf lib",
-    "build:compile": "npm run injectcss && babel --presets=env,flow -d lib/ src/ ",
+    "build:compile": " babel --presets=env,flow -d lib/ src/ ",
     "compile": "npm run build:clean && npm run build:compile && npm run flow-copy",
-    "standalone": "npm run injectcss && browserify src/index.js --ignore-missing --standalone seisplotjs_waveformplot -o seisplotjs_waveformplot_${npm_package_version}_standalone.js -t [ babelify --presets [ env flow ] ]",
+    "standalone": " browserify src/index.js --ignore-missing --standalone seisplotjs_waveformplot -o seisplotjs_waveformplot_${npm_package_version}_standalone.js -t [ babelify --presets [ env flow ] ]",
     "prepare": "npm run compile"
   },
   "repository": {
@@ -51,7 +52,7 @@
     "eslint-plugin-node": "^6.0.1",
     "eslint-plugin-promise": "^3.8.0",
     "eslint-plugin-standard": "^3.1.0",
-    "flow-bin": "^0.73.0",
+    "flow-bin": "^0.74.0",
     "flow-copy-source": "^2.0.0",
     "flow-typed": "^2.4.0"
   },
