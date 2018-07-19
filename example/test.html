@@ -65,6 +65,11 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-polyfill/6.26.0/polyfill.min.js"></script>
 <script src="seisplotjs_waveformplot_1.2.4_standalone.js"></script>
-<script src="test.js"></script>
+<script>
+  var wp = seisplotjs_waveformplot;
+  wp.createPlotsBySelector('div.myseisplot').then(function() {
+    console.log("all plots done");
+  });
+</script>
 </body>
 </html>
