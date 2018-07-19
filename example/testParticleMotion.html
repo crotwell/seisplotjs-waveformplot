@@ -39,16 +39,17 @@
 &lt/div&gt
 </pre>
 
-<div xxxhref="jsc_parmo.mseed" class='particleMotion'  net='US' sta='LONY' loc='--' chan='BHZ,BHN,BHE' start='2010-04-11T22:23:15' duration='3' >
+<div class='particleMotion'  net='US' sta='LONY' loc='--' chan='BHZ,BHN,BHE' start='2010-04-11T22:23:15' duration='3' >
 </div>
 
-<div  xxxhref="jsc_parmo.mseed" class='myseisplot'  net='US' sta='LONY' loc='--' chan='BHZ,BHN,BHE' start='2010-04-11T22:23:15' duration='3' >
+<div  class='myseisplot'  net='US' sta='LONY' loc='--' chan='BHZ,BHN,BHE' start='2010-04-11T22:23:15' duration='3' >
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-polyfill/6.26.0/polyfill.min.js"></script>
 <script src="seisplotjs_waveformplot_1.2.4_standalone.js"></script>
 <script>
   var wp = seisplotjs_waveformplot;
+  // this is kind of dumb, better to load the data once and plot twice
   wp.createParticleMotionBySelector('div.particleMotion');
   wp.createPlotsBySelector('div.myseisplot');
 </script>
