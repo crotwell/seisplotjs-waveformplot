@@ -13,12 +13,13 @@
 
 <!--
 -->
-<h3>Plots of 360 seconds of CO.JSC.00.HH?</h3>
+<h3>Plots of <span class="seconds">300</span> seconds of CO.JSC.00.HH?</h3>
 
 <div class='timeRangeChooser'>
 </div>
 
 <div class='myseisplot' >
+  <p>Click Update to load</p>
 </div>
 
 
@@ -40,9 +41,9 @@ buttonDiv.append("button")
   let timeRange = timeChooser.getTimeRange();
   console.log("Update: "+timeRange.start.toISOString()+" "+timeRange.end.toISOString());
   if (timeRange.start.isBefore(timeRange.end)) {
-
+    wp.d3.select(".seconds").text(timeRange.duration);
     //fetch('jsc.mseed')
-    fetch('http://service.iris.edu/fdsnws/dataselect/1/query?net=CO&sta=TEEBA&loc=00&cha=LHZ&starttime='+timeRange.start.toISOString()+'&endtime='+timeRange.end.toISOString()+'&nodata=404')
+    fetch('http://service.iris.edu/fdsnws/dataselect/1/query?net=CO&sta=JSC&loc=00&cha=HH?&starttime='+timeRange.start.toISOString()+'&endtime='+timeRange.end.toISOString()+'&nodata=404')
         .then(request => {
           if (request.ok && request.status == 200) {
             return request.arrayBuffer();
@@ -67,6 +68,7 @@ buttonDiv.append("button")
           }
           let svgParent = wp.d3.select("div.myseisplot");
           if (segments.length > 0) {
+            svgParent.selectAll("p").remove();
             let s = segments[0];
             let svgDiv = svgParent.append("div");
             let startDate = null;
@@ -74,6 +76,7 @@ buttonDiv.append("button")
             svgDiv.classed("svg-container-wide", true);
             if ( ! seismograph) {
               seismograph = new wp.Seismograph(svgDiv, s, timeRange.start, timeRange.end);
+              seismograph.svg.classed("overlayPlot", true);// for css styling
             } else {
               seismograph.setPlotStart(timeRange.start)
                 .setPlotEnd(timeRange.end)
@@ -86,6 +89,10 @@ buttonDiv.append("button")
           } else {
             svgParent.append('p').text("No Data");
           }
+        }).catch(err => {
+          let svgParent = wp.d3.select("div.myseisplot");
+          svgParent.append('p').text("No Data");
+          svgParent.append('p').text(err);
         });
       } else {
         throw new Error("Start after end!");
