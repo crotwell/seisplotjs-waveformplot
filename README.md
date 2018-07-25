@@ -1,3 +1,5 @@
+[![npm](https://img.shields.io/npm/v/seisplotjs-waveformplot.svg)](https://www.npmjs.com/package/seisplotjs-waveformplot)
+
 # seisplotjs-waveformplot
 Plotting seismic data in miniseed format using d3
 
@@ -60,3 +62,6 @@ Load the html page in your browser and you should end up with a seismogram plot.
 [Considerations](http://service.iris.edu/fdsnws/dataselect/docs/1/help/#considerations)
 and [Usage guidelines](http://ds.iris.edu/ds/nodes/dmc/services/usage/)
 in the IRIS help pages for more information.
+
+
+[API Documentation](http://www.seis.sc.edu/software/seisplotjs/waveformplot/)

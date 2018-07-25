@@ -3,3 +3,4 @@ node_modules
 seisplotjs_*_standalone.js
 example/**/seisplotjs_*_standalone.js
 flow-typed/npm
+docs/api_*

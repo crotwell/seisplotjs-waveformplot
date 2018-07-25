@@ -14,7 +14,7 @@
     "browserifycss": "browserify -t [ browserify-css --minify=false --insertAt=top ] css/inject_css.js -o src/inject_css.js",
     "injectcss": "echo \"Error: do css to js manually for now...\" && exit 1",
     "test": "jest",
-    "doc": "documentation build src/seedlink.js src/datalink.js src/ringserver-web.js src/util.js --github -o docs -f html --document-exported ",
+    "doc": "rimraf docs/api_${npm_package_version} && documentation build --config documentation.yml src/waveformplot.js src/particleMotion.js src/util.js --github -o docs/api_${npm_package_version} -f html --document-exported ",
     "flow": "flow",
     "flow-copy": "flow-copy-source -v -i '**/__tests__/**' src lib",
     "build:clean": "rimraf lib",

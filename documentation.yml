@@ -1,0 +1,61 @@
+toc:
+  - name: Usage
+    description: |
+      Generally either
+      ```
+      import * as waveformplot from 'seisplotjs-waveformplot'
+      fdsndataselect.xxxx
+      ```
+      or
+
+      ```
+      import * as seisplotjs from 'seisplotjs'
+      seisplotjs.waveformplot.xxxx
+      ```
+
+  - name: Core Functionality
+    description: |
+      Core functions for using plotting seismic data
+  - createParticleMotionBySelector
+  - createPlotsBySelector
+  - ParticleMotion
+  - Seismograph
+  - calcClockOffset
+  - calcStartEndDates
+  - findStartEnd
+  - findMinMax
+
+  - name: Core Classes and Constants
+    description: |
+      Core classes returned from the above functions.
+  - MarginType
+  - ScaleChangeListenerType
+  - MarkerType
+  - PlotDataType
+  - TimeWindow
+
+
+  - name: Re-export
+    description: |
+      Re-exporting imported modules for easier reuse.
+  - dataselect
+  - miniseed
+  - model
+  - RSVP
+  - d3
+  - moment
+
+
+  - name: Other
+    description: |
+      Stuff I forgot to put in the TOC.
+
+  - name: Deprecated
+    description: |
+      Deprecated, do not use.
+  - chart
+  - loadParse
+  - loadParseSplit
+  - loadParseSplitUrl
+  - formRequest
+  - formRequestUrl
