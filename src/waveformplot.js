@@ -102,6 +102,7 @@ export class Seismograph {
   currZoomXScale: any;
   yScale: any;
   yScaleRmean: any;
+  doRMean: boolean;
   lineFunc: any;
   zoom: any;
   xAxis: any;
@@ -121,6 +122,7 @@ export class Seismograph {
     this.yLabel = "Amplitude";
     this.ySublabel = "";
     this.ySublabelTrans = 10;
+    this.doRMean = true;
     this.svgParent = inSvgParent;
     this.segments = [];
     this._internalAppend(inSegments);
@@ -619,6 +621,10 @@ export class Seismograph {
     this.yAxis.tickFormat(this.yScaleFormat);
     return this;
   }
+  setDoRMean(value: boolean) {
+    this.doRMean = value;
+    this.redoDisplayYScale();
+  }
   clearMarkers() :Seismograph {
     this.markers.length = 0; //set array length to zero deletes all
     this.drawMarkers(this.markers, this.g.select("g.allmarkers"));
@@ -646,8 +652,15 @@ export class Seismograph {
       minMax = [ minMax[0]-1, minMax[1]+1];
     }
     this.yScale.domain(minMax).nice();
+    this.redoDisplayYScale();
+  }
+  redoDisplayYScale() :void {
     let niceMinMax = this.yScale.domain();
-    this.yScaleRmean.domain([ (niceMinMax[0]-niceMinMax[1])/2, (niceMinMax[1]-niceMinMax[0])/2 ]);
+    if (this.doRMean) {
+      this.yScaleRmean.domain([ (niceMinMax[0]-niceMinMax[1])/2, (niceMinMax[1]-niceMinMax[0])/2 ]);
+    } else {
+      this.yScaleRmean.domain(niceMinMax);
+    }
     this.rescaleYAxis();
   }
 
