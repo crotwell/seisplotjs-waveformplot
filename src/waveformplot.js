@@ -504,8 +504,14 @@ export class Seismograph {
     }, 250);
   }
 
+  getPlotStart() :moment {
+    return moment.utc(this.xScale.domain()[0]);
+  }
   setPlotStart(value :moment) :Seismograph {
     return this.setPlotStartEnd(value, this.xScale.domain()[1]);
+  }
+  getPlotEnd() :moment {
+    return moment.utc(this.xScale.domain()[1]);
   }
   setPlotEnd(value :moment) :Seismograph {
     return this.setPlotStartEnd(this.xScale.domain()[0], value);
@@ -534,20 +540,26 @@ export class Seismograph {
     this.g.attr("transform", "translate(" + this.margin.left + "," + this.margin.top + ")");
     return this;
   }
-
+  getTitle() :Array<string> {
+    return this.title;
+  }
   /** Sets the title as simple string or array of strings. If an array
   then each item will be in a separate tspan for easier formatting.
   */
   setTitle(value :string | Array<string>) :Seismograph {
-    this.title = value;
+    if (value instanceof String) {
+      this.title = [ value ];
+    } else {
+      this.title = value;
+    }
     this.svg.selectAll("g.title").remove();
     let titleSVGText = this.svg.append("g")
        .classed("title", true)
        .attr("transform", "translate("+(this.margin.left+(this.width)/2)+", "+( this.margin.bottom/3  )+")")
        .append("text").classed("title label", true)
        .attr("text-anchor", "middle");
-    if (Array.isArray(value)) {
-      value.forEach(function(s) {
+    if (Array.isArray(this.title)) {
+      this.title.forEach(function(s) {
         titleSVGText.append("tspan").text(s+" ");
       });
     } else {
@@ -555,6 +567,9 @@ export class Seismograph {
         .text(this.title);
     }
     return this;
+  }
+  getXLabel() :string {
+    return this.xLabel;
   }
   setXLabel(value :string) :Seismograph {
     this.xLabel = value;
@@ -566,6 +581,9 @@ export class Seismograph {
        .attr("text-anchor", "middle")
        .text(this.xLabel);
     return this;
+  }
+  getYLabel() :string {
+    return this.yLabel;
   }
   setYLabel(value :string) :Seismograph {
     this.yLabel = value;
@@ -583,6 +601,9 @@ export class Seismograph {
        .text(this.yLabel);
     return this;
   }
+  getXSublabel() :string {
+    return this.xSublabel;
+  }
   setXSublabel(value :string) :Seismograph {
     this.xSublabel = value;
     this.svg.selectAll('g.xSublabel').remove();
@@ -593,6 +614,9 @@ export class Seismograph {
        .attr("text-anchor", "middle")
        .text(this.xSublabel);
     return this;
+  }
+  getYSublabel() :string {
+    return this.ySublabel;
   }
   setYSublabel(value :string) :Seismograph {
     this.ySublabel = value;
@@ -620,6 +644,9 @@ export class Seismograph {
     this.yScaleFormat = formatter;
     this.yAxis.tickFormat(this.yScaleFormat);
     return this;
+  }
+  isDoRMean() :boolean {
+    return this.doRMean;
   }
   setDoRMean(value: boolean) {
     this.doRMean = value;
@@ -663,7 +690,9 @@ export class Seismograph {
     }
     this.rescaleYAxis();
   }
-
+  getSeismograms() :Array<miniseed.model.Seismogram> {
+    return this.segments;
+  }
   /** can append single seismogram segment or an array of segments. */
   _internalAppend(seismogram: Array<miniseed.model.Seismogram> | miniseed.model.Seismogram) :void {
     if (Array.isArray(seismogram)) {
