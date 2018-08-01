@@ -76,7 +76,7 @@ export class Seismograph {
   beforeFirstDraw: boolean;
   xScaleFormat: (date: Date) => string;
   yScaleFormat: string | (value :number) => string;
-  title: string | Array<string>;
+  title: Array<string>;
   xLabel: string;
   xSublabel: string;
   yLabel: string;
@@ -103,6 +103,8 @@ export class Seismograph {
   yScale: any;
   yScaleRmean: any;
   doRMean: boolean;
+  doGain: boolean;
+  instrumentSensitivity: miniseed.model.InstrumentSensitivity;
   lineFunc: any;
   zoom: any;
   xAxis: any;
@@ -116,13 +118,14 @@ export class Seismograph {
     this.beforeFirstDraw = true;
     this.xScaleFormat = multiFormatHour;
     this.yScaleFormat = "3e";
-    this.title = "";
+    this.title = [ "" ];
     this.xLabel = "Time";
     this.xSublabel = "";
     this.yLabel = "Amplitude";
     this.ySublabel = "";
-    this.ySublabelTrans = 10;
+    this.ySublabelTrans = 15;
     this.doRMean = true;
+    this.doGain = true;
     this.svgParent = inSvgParent;
     this.segments = [];
     this._internalAppend(inSegments);
@@ -652,6 +655,17 @@ export class Seismograph {
     this.doRMean = value;
     this.redoDisplayYScale();
   }
+  isDoGain() :boolean {
+    return this.doGain;
+  }
+  setDoGain(value: boolean) {
+    this.doGain = value;
+    this.redoDisplayYScale();
+  }
+  setInstrumentSensitivity(value: model.InstrumentSensitivity) {
+    this.instrumentSensitivity = value;
+    this.redoDisplayYScale();
+  }
   clearMarkers() :Seismograph {
     this.markers.length = 0; //set array length to zero deletes all
     this.drawMarkers(this.markers, this.g.select("g.allmarkers"));
@@ -683,6 +697,11 @@ export class Seismograph {
   }
   redoDisplayYScale() :void {
     let niceMinMax = this.yScale.domain();
+    if (this.doGain && this.instrumentSensitivity) {
+      niceMinMax[0] = niceMinMax[0] / this.instrumentSensitivity.sensitivity();
+      niceMinMax[1] = niceMinMax[1] / this.instrumentSensitivity.sensitivity();
+      this.ySublabel = this.instrumentSensitivity.inputUnits();
+    }
     if (this.doRMean) {
       this.yScaleRmean.domain([ (niceMinMax[0]-niceMinMax[1])/2, (niceMinMax[1]-niceMinMax[0])/2 ]);
     } else {
