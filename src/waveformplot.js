@@ -700,7 +700,9 @@ export class Seismograph {
     if (this.doGain && this.instrumentSensitivity) {
       niceMinMax[0] = niceMinMax[0] / this.instrumentSensitivity.sensitivity();
       niceMinMax[1] = niceMinMax[1] / this.instrumentSensitivity.sensitivity();
-      this.ySublabel = this.instrumentSensitivity.inputUnits();
+      this.setYSublabel(this.instrumentSensitivity.inputUnits());
+    } else {
+      this.setYSublabel("Count");
     }
     if (this.doRMean) {
       this.yScaleRmean.domain([ (niceMinMax[0]-niceMinMax[1])/2, (niceMinMax[1]-niceMinMax[0])/2 ]);
